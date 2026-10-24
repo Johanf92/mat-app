@@ -1,19 +1,34 @@
 import { useState } from 'react';
 import { Link } from 'expo-router';
-import { SafeAreaView, ScrollView, Text, TextInput, View, StyleSheet } from 'react-native';
+import { SafeAreaView, ScrollView, Text, TextInput, View, Pressable, StyleSheet } from 'react-native';
 import { products } from '../src/products';
+
 export default function Home() {
- const [query,setQuery]=useState('');
- const filtered=products.filter(p=>(p.name+' '+p.brand).toLowerCase().includes(query.toLowerCase()));
- return <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.page}>
- <Text style={s.brand}>MATKONTROLL</Text><Text style={s.title}>Vit hva du spiser.</Text>
- <Text style={s.body}>Se bak emballasjen. Forstå hva maten inneholder, uten pekefinger.</Text>
- <View style={s.hero}><Text style={s.heroTitle}>Se bak etiketten</Text><Text style={s.body}>Søk etter en matvare og få en enkel forklaring.</Text><Text style={s.small}>Strekkodeskanning kommer senere.</Text></View>
- <TextInput accessibilityLabel="Søk etter matvare" placeholder="Søk etter matvare…" value={query} onChangeText={setQuery} style={s.input}/>
- <Text style={s.section}>Eksempelprodukter</Text><Text style={s.small}>Fiktive data – ikke ekte produktanalyser.</Text>
- {filtered.map(p=><Link key={p.id} href={{pathname:'/product/[id]',params:{id:p.id}}} style={s.card}><Text style={s.item}>{p.name}{'\n'}<Text style={s.small}>{p.brand} · NOVA {p.nova ?? 'ukjent'} →</Text></Text></Link>)}
- {filtered.length===0&&<Text>Ingen produkter funnet.</Text>}
- <Link href="/compare" style={s.link}>Sammenlign produktene →</Link>
- </ScrollView></SafeAreaView>;
+  const [query,setQuery]=useState('');
+  const [searching,setSearching]=useState(false);
+  const filtered=products.filter(p=>(p.name+' '+p.brand).toLowerCase().includes(query.toLowerCase()));
+  return <SafeAreaView style={s.safe}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.page}>
+    <View style={s.header}><Text style={s.brand}>◉  matkontroll</Text><Text style={s.version}>BETA</Text></View>
+    <View style={s.intro}><Text style={s.title}>Hva inneholder maten din?</Text><Text style={s.subtitle}>Se bak etiketten. Vit hva du spiser.</Text></View>
+    <Pressable accessibilityRole="button" onPress={()=>setSearching(true)} style={s.scan}><Text style={s.scanIcon}>▣</Text><Text style={s.scanTitle}>Skann strekkode</Text><Text style={s.scanSub}>Kameraskanning kommer snart</Text></Pressable>
+    <Text style={s.or}>ELLER SØK ETTER EN MATVARE</Text>
+    <TextInput accessibilityLabel="Søk etter matvare eller merke" placeholder="Produkt eller merke…" placeholderTextColor="#87958B" value={query} onChangeText={v=>{setQuery(v);setSearching(true);}} onFocus={()=>setSearching(true)} style={s.input}/>
+    {(searching || query.length>0) && <View style={s.results}>
+      <Text style={s.helper}>Demo: fiktive eksempelprodukter</Text>
+      {filtered.map(p=><Link key={p.id} href={{pathname:'/product/[id]',params:{id:p.id}}} style={s.product}><Text style={s.productText}>{p.name}{'\n'}<Text style={s.productBrand}>{p.brand}  →</Text></Text></Link>)}
+      {filtered.length===0&&<Text style={s.helper}>Ingen produkter funnet.</Text>}
+    </View>}
+    {!searching && <View style={s.bottom}><Text style={s.bottomTitle}>Enklere matvalg, uten pekefinger.</Text><Text style={s.helper}>Søk for å prøve prototypen med eksempeldata.</Text></View>}
+    <Link href="/compare" style={s.compare}>Sammenlign eksempelprodukter →</Link>
+  </ScrollView></SafeAreaView>;
 }
-const s=StyleSheet.create({safe:{flex:1,backgroundColor:'#F8FAF7'},page:{padding:24,paddingTop:35,gap:14},brand:{fontWeight:'800',letterSpacing:2,color:'#34745A'},title:{fontSize:35,fontWeight:'800',color:'#193328'},body:{fontSize:16,lineHeight:24,color:'#526B5C'},hero:{backgroundColor:'#E1F0E5',padding:22,borderRadius:22,gap:10},heroTitle:{fontSize:22,fontWeight:'800',color:'#234F38'},small:{fontSize:12,color:'#7C7865'},input:{backgroundColor:'white',padding:17,borderRadius:14,borderWidth:1,borderColor:'#E1E8E2',fontSize:16},section:{fontSize:20,fontWeight:'800',color:'#193328'},card:{backgroundColor:'white',borderRadius:15,padding:18,borderWidth:1,borderColor:'#E4EAE5'},item:{fontSize:17,fontWeight:'700',lineHeight:26,color:'#213D2C'},link:{fontSize:16,fontWeight:'800',color:'#27704C',marginTop:12}});
+const s=StyleSheet.create({
+  safe:{flex:1,backgroundColor:'#FAFBF8'},page:{padding:24,paddingTop:25,paddingBottom:50,gap:16},
+  header:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},brand:{fontSize:21,fontWeight:'800',color:'#20543C'},version:{fontSize:11,fontWeight:'800',color:'#758C7D',letterSpacing:1},
+  intro:{marginTop:45,gap:12,marginBottom:12},title:{fontSize:34,lineHeight:41,fontWeight:'800',color:'#1C3428'},subtitle:{fontSize:16,color:'#63796B',lineHeight:24},
+  scan:{backgroundColor:'#246C4C',borderRadius:24,paddingVertical:30,alignItems:'center',gap:8},scanIcon:{fontSize:40,color:'#FFFFFF'},scanTitle:{fontSize:21,fontWeight:'800',color:'white'},scanSub:{fontSize:12,color:'#D9EBDE'},
+  or:{textAlign:'center',fontSize:11,fontWeight:'800',letterSpacing:1.2,color:'#89958C',marginTop:10},
+  input:{backgroundColor:'white',borderWidth:1,borderColor:'#DDE6DF',borderRadius:16,padding:18,fontSize:16,color:'#243D2D'},
+  results:{gap:10},helper:{fontSize:13,lineHeight:20,color:'#7B8B80'},product:{padding:17,backgroundColor:'white',borderWidth:1,borderColor:'#E1E9E3',borderRadius:16},productText:{fontSize:17,fontWeight:'700',lineHeight:26,color:'#1E3929'},productBrand:{fontSize:13,color:'#77877B',fontWeight:'400'},
+  bottom:{marginTop:34,gap:8,alignItems:'center'},bottomTitle:{fontSize:16,fontWeight:'700',color:'#3B5B46',textAlign:'center'},compare:{color:'#276F4D',fontWeight:'700',textAlign:'center',marginTop:20}
+});
