@@ -1,54 +1,55 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocalSearchParams, Link } from 'expo-router';
-import { SafeAreaView, ScrollView, Text, View, Pressable, Modal, StyleSheet } from 'react-native';
-import { products } from '../../src/products';
+import { SafeAreaView, ScrollView, Text, View, Pressable, Modal, Image, ActivityIndicator, StyleSheet } from 'react-native';
+import { FoodProduct, getProduct } from '../../src/openFoodFacts';
 
-type InfoTopic='nova'|'sugar'|'ingredients';
-const help:Record<InfoTopic,{title:string;description:string;details:string}>={
-  nova:{title:'Hva er NOVA?',description:'NOVA deler matvarer i fire grupper etter bearbeidingsgrad.',details:'1: Ubearbeidet eller minimalt bearbeidet.\n2: Bearbeidede kulinariske ingredienser, som olje og sukker.\n3: Bearbeidede matvarer.\n4: Ultrabearbeidede matvarer.\n\nNOVA er ikke en samlet vurdering av hvor sunn maten er.'},
-  sugar:{title:'Hva betyr sukker per 100 g?',description:'Tallet viser totalt sukker, inkludert naturlig forekommende sukker.',details:'For eksempel inneholder naturell yoghurt naturlig melkesukker (laktose). Total sukkerverdi forteller ikke alene hvor mye sukker som er tilsatt.'},
-  ingredients:{title:'Hvordan lese ingredienslisten?',description:'Ingredienser oppgis vanligvis i synkende rekkefølge etter vekt da produktet ble laget.',details:'Listen hjelper deg å forstå hva produktet består av. Husk at en kort ingrediensliste ikke automatisk betyr at et produkt er sunnere.'}
+type Topic='nova'|'sugar'|'ingredients';
+const help:Record<Topic,{title:string;body:string}>={
+ nova:{title:'Hva er NOVA?',body:'NOVA klassifiserer mat etter bearbeidingsgrad.\n\n1: Ubearbeidet eller minimalt bearbeidet\n2: Bearbeidede kulinariske ingredienser\n3: Bearbeidede matvarer\n4: Ultrabearbeidede matvarer\n\nNOVA er ikke en samlet vurdering av hvor sunn maten er.'},
+ sugar:{title:'Hva betyr sukker per 100 g?',body:'Dette er totalt sukker, også naturlig forekommende sukker. Tallet alene forteller ikke om sukkeret er tilsatt.'},
+ ingredients:{title:'Hvordan lese ingredienslisten?',body:'Ingrediensene er normalt oppført i synkende rekkefølge etter vekt. Manglende ingrediensinformasjon betyr ikke at produktet er fritt for bestemte stoffer.'}
 };
-export default function Product() {
+function amount(n:number|null,unit='g'){return n===null?'Ikke oppgitt':n.toLocaleString('nb-NO',{maximumFractionDigits:1})+' '+unit;}
+export default function ProductScreen(){
  const {id}=useLocalSearchParams<{id:string}>();
- const p=products.find(x=>x.id===id);
- const [topic,setTopic]=useState<InfoTopic|null>(null);
- const [expanded,setExpanded]=useState<'ingredients'|'nutrition'|null>(null);
- if(!p)return <SafeAreaView style={s.page}><Text>Produktet finnes ikke.</Text><Link href="/">Tilbake</Link></SafeAreaView>;
- const summary=p.id==='naturell'?'En enkel yoghurt uten tilsatt sukker i dette eksemplet. Inneholder naturlig melkesukker.':'Inneholder protein, men også tilsatt sukker i dette eksemplet. NOVA sier noe om bearbeiding, ikke om samlet helse.';
+ const [p,setP]=useState<FoodProduct|null>(null);
+ const [loading,setLoading]=useState(true);
+ const [error,setError]=useState('');
+ const [topic,setTopic]=useState<Topic|null>(null);
+ const [expanded,setExpanded]=useState<'ingredients'|'nutrition'|'additives'|null>(null);
+ useEffect(()=>{const controller=new AbortController();setLoading(true);setP(null);setError('');
+  getProduct(id??'',controller.signal).then(item=>{if(!controller.signal.aborted){setP(item);if(!item)setError('Fant ikke produktet i Open Food Facts.');}}).catch(()=>{if(!controller.signal.aborted)setError('Kunne ikke hente produktet. Prøv igjen senere.');}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});
+  return ()=>controller.abort();
+ },[id]);
  return <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.page}>
-   <Link href="/" style={s.back}>← Tilbake</Link>
-   <View style={s.productHeader}><View style={s.productImage}><Text style={s.productEmoji}>◻</Text></View><View style={s.productMeta}><Text style={s.label}>FIKTIVT EKSEMPEL</Text><Text style={s.title}>{p.name}</Text><Text style={s.brand}>{p.brand}</Text></View></View>
-   <View style={s.summary}><Text style={s.summaryTitle}>Kort oppsummert</Text><Text style={s.body}>{summary}</Text></View>
+  <Link href="/" style={s.back}>← Tilbake til søk</Link>
+  {loading&&<ActivityIndicator color="#246C4C" size="large"/>}
+  {!!error&&<Text style={s.body}>{error}</Text>}
+  {p&&<>
+   <View style={s.productHeader}>{p.image?<Image source={{uri:p.image}} style={s.photo} resizeMode="contain"/>:<View style={s.photo}/>}<View style={s.meta}><Text style={s.source}>OPEN FOOD FACTS</Text><Text style={s.title}>{p.name}</Text><Text style={s.brand}>{p.brand}</Text>{p.quantity&&<Text style={s.brand}>{p.quantity}</Text>}</View></View>
+   <View style={s.summary}><Text style={s.summaryTitle}>Kort oppsummert</Text><Text style={s.body}>{p.ingredients?'Ingredienslisten er tilgjengelig. Utforsk innholdet og næringsverdiene nedenfor.':'Ingredienslisten er ikke oppgitt for dette produktet.'} {p.nova===null?'Bearbeidingsgrad er ikke oppgitt.':''}</Text></View>
    <View style={s.tiles}>
-     <Pressable accessibilityRole="button" onPress={()=>setTopic('nova')} style={s.tile}><Text style={s.tileLabel}>Bearbeiding  ⓘ</Text><Text style={s.tileValue}>NOVA {p.nova??'?'}</Text></Pressable>
-     <Pressable accessibilityRole="button" onPress={()=>setTopic('sugar')} style={s.tile}><Text style={s.tileLabel}>Sukker / 100 g  ⓘ</Text><Text style={s.tileValue}>{p.sugar} g</Text></Pressable>
+    <Pressable onPress={()=>setTopic('nova')} style={s.tile}><Text style={s.tileLabel}>Bearbeiding  ⓘ</Text><Text style={s.tileValue}>{p.nova===null?'Ukjent':'NOVA '+p.nova}</Text></Pressable>
+    <Pressable onPress={()=>setTopic('sugar')} style={s.tile}><Text style={s.tileLabel}>Sukker / 100 g  ⓘ</Text><Text style={s.tileValue}>{amount(p.sugar)}</Text></Pressable>
    </View>
-   <Text style={s.section}>Dette bør du vite</Text>
-   {p.positives.map(x=><Text key={x} style={s.fact}>✓  {x}</Text>)}
-   {p.notes.map(x=><Text key={x} style={s.fact}>•  {x}</Text>)}
-   <Pressable accessibilityRole="button" onPress={()=>setExpanded(expanded==='ingredients'?null:'ingredients')} style={s.accordion}><Text style={s.accordionTitle}>Ingredienser</Text><Text style={s.arrow}>{expanded==='ingredients'?'−':'+'}</Text></Pressable>
-   {expanded==='ingredients'&&<View style={s.detail}><Text style={s.body}>{p.ingredients}</Text><Pressable onPress={()=>setTopic('ingredients')}><Text style={s.info}>ⓘ Slik leser du ingredienslisten</Text></Pressable></View>}
-   <Pressable accessibilityRole="button" onPress={()=>setExpanded(expanded==='nutrition'?null:'nutrition')} style={s.accordion}><Text style={s.accordionTitle}>Næringsinnhold</Text><Text style={s.arrow}>{expanded==='nutrition'?'−':'+'}</Text></Pressable>
-   {expanded==='nutrition'&&<View style={s.detail}><Text style={s.body}>Per 100 g</Text><Text style={s.body}>Protein: {p.protein} g</Text><Text style={s.body}>Sukker: {p.sugar} g</Text><Text style={s.body}>Fiber: {p.fiber} g</Text><Text style={s.body}>Salt: {p.salt} g</Text></View>}
-   <Link href="/compare" style={s.compare}>⇄  Sammenlign med annet produkt →</Link>
-   <Text style={s.disclaimer}>Alle produktdata på denne skjermen er fiktive. Ikke bruk dem til allergivurdering.</Text>
+   <Pressable onPress={()=>setExpanded(expanded==='ingredients'?null:'ingredients')} style={s.accordion}><Text style={s.accordionTitle}>Ingredienser</Text><Text style={s.arrow}>{expanded==='ingredients'?'−':'+'}</Text></Pressable>
+   {expanded==='ingredients'&&<View style={s.detail}><Text style={s.body}>{p.ingredients||'Ikke oppgitt.'}</Text><Pressable onPress={()=>setTopic('ingredients')}><Text style={s.info}>ⓘ Slik leser du ingredienslisten</Text></Pressable></View>}
+   <Pressable onPress={()=>setExpanded(expanded==='nutrition'?null:'nutrition')} style={s.accordion}><Text style={s.accordionTitle}>Næringsinnhold</Text><Text style={s.arrow}>{expanded==='nutrition'?'−':'+'}</Text></Pressable>
+   {expanded==='nutrition'&&<View style={s.detail}><Text style={s.body}>Per 100 g / 100 ml (som oppgitt i datakilden)</Text><Text style={s.body}>Energi: {amount(p.energy,'kcal')}</Text><Text style={s.body}>Protein: {amount(p.protein)}</Text><Text style={s.body}>Sukker: {amount(p.sugar)}</Text><Text style={s.body}>Fiber: {amount(p.fiber)}</Text><Text style={s.body}>Salt: {amount(p.salt)}</Text></View>}
+   <Pressable onPress={()=>setExpanded(expanded==='additives'?null:'additives')} style={s.accordion}><Text style={s.accordionTitle}>Tilsetningsstoffer og allergener</Text><Text style={s.arrow}>{expanded==='additives'?'−':'+'}</Text></Pressable>
+   {expanded==='additives'&&<View style={s.detail}><Text style={s.body}>Registrerte tilsetningsstoffer: {p.additives.length?p.additives.map(x=>x.replace(/^en:/,'')).join(', '):'Ingen opplysninger registrert'}</Text><Text style={s.body}>Registrerte allergener: {p.allergens.length?p.allergens.map(x=>x.replace(/^en:/,'')).join(', '):'Ingen opplysninger registrert'}</Text><Text style={s.warning}>Manglende registrering betyr IKKE at produktet er uten tilsetningsstoffer eller allergener. Kontroller alltid emballasjen.</Text></View>}
+   <Text style={s.disclaimer}>Produktdata er hentet fra Open Food Facts og kan være feil eller ufullstendige. Sjekk alltid emballasjen, spesielt ved allergi. NOVA er ikke en helsescore.</Text>
+   <Text style={s.source}>Kilde: Open Food Facts · Strekkode: {p.code}</Text>
+  </>}
  </ScrollView>
- <Modal visible={topic!==null} transparent animationType="fade" onRequestClose={()=>setTopic(null)}>
-   <View style={s.overlay}><View style={s.dialog}>
-     <Text style={s.dialogTitle}>{topic?help[topic].title:''}</Text>
-     <Text style={s.body}>{topic?help[topic].description:''}</Text>
-     <Text style={s.dialogDetails}>{topic?help[topic].details:''}</Text>
-     <Pressable accessibilityRole="button" onPress={()=>setTopic(null)} style={s.close}><Text style={s.closeText}>Lukk</Text></Pressable>
-   </View></View>
- </Modal>
+ <Modal visible={topic!==null} transparent animationType="fade" onRequestClose={()=>setTopic(null)}><View style={s.overlay}><View style={s.dialog}><Text style={s.dialogTitle}>{topic?help[topic].title:''}</Text><Text style={s.body}>{topic?help[topic].body:''}</Text><Pressable onPress={()=>setTopic(null)} style={s.close}><Text style={s.closeText}>Lukk</Text></Pressable></View></View></Modal>
  </SafeAreaView>;
 }
 const s=StyleSheet.create({
- safe:{flex:1,backgroundColor:'#FAFBF8'},page:{padding:24,paddingBottom:60,gap:16},back:{color:'#286E4E',fontSize:16,fontWeight:'700',marginBottom:8},
- productHeader:{flexDirection:'row',gap:15,alignItems:'center'},productImage:{width:78,height:90,borderRadius:17,backgroundColor:'#E9EFE9',alignItems:'center',justifyContent:'center'},productEmoji:{fontSize:35,color:'#8BA392'},productMeta:{flex:1,gap:5},label:{fontSize:11,fontWeight:'800',color:'#9C7C51'},title:{fontSize:25,fontWeight:'800',color:'#1C3428'},brand:{fontSize:14,color:'#708477'},
- summary:{backgroundColor:'#E4F1E7',padding:19,borderRadius:18,gap:8,marginTop:8},summaryTitle:{fontSize:17,fontWeight:'800',color:'#21543B'},body:{fontSize:15,lineHeight:23,color:'#42594A'},tiles:{flexDirection:'row',gap:12},tile:{flex:1,backgroundColor:'white',borderWidth:1,borderColor:'#E0E9E2',padding:16,borderRadius:16,gap:9},tileLabel:{fontSize:12,color:'#718578'},tileValue:{fontSize:21,fontWeight:'800',color:'#203B2B'},
- section:{fontSize:18,fontWeight:'800',color:'#203B2B',marginTop:10},fact:{fontSize:15,lineHeight:23,color:'#42594A'},accordion:{borderTopWidth:1,borderTopColor:'#E3E9E4',paddingVertical:17,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},accordionTitle:{fontSize:17,fontWeight:'700',color:'#203B2B'},arrow:{fontSize:23,color:'#4B755D'},detail:{paddingBottom:15,gap:8},info:{color:'#286E4E',fontWeight:'700',paddingVertical:7},
- compare:{backgroundColor:'#E8F1EA',padding:17,borderRadius:14,color:'#266848',fontWeight:'800',textAlign:'center',marginTop:8},disclaimer:{fontSize:12,lineHeight:19,color:'#8C826F'},
- overlay:{flex:1,backgroundColor:'rgba(17,35,23,0.48)',justifyContent:'center',padding:24},dialog:{backgroundColor:'white',borderRadius:24,padding:24,gap:16},dialogTitle:{fontSize:23,fontWeight:'800',color:'#1C3428'},dialogDetails:{fontSize:14,lineHeight:23,color:'#506759'},close:{backgroundColor:'#246C4C',padding:15,borderRadius:13,alignItems:'center'},closeText:{fontWeight:'800',color:'white'}
+ safe:{flex:1,backgroundColor:'#FAFBF8'},page:{padding:24,paddingBottom:65,gap:16},back:{color:'#286E4E',fontSize:16,fontWeight:'700',marginBottom:8},
+ productHeader:{flexDirection:'row',gap:14,alignItems:'center'},photo:{width:86,height:102,borderRadius:15,backgroundColor:'#E9EFE9'},meta:{flex:1,gap:5},source:{fontSize:11,fontWeight:'700',color:'#8C8069'},title:{fontSize:24,fontWeight:'800',color:'#1C3428'},brand:{fontSize:14,color:'#708477'},
+ summary:{backgroundColor:'#E4F1E7',padding:19,borderRadius:18,gap:8,marginTop:8},summaryTitle:{fontSize:17,fontWeight:'800',color:'#21543B'},body:{fontSize:15,lineHeight:23,color:'#42594A'},
+ tiles:{flexDirection:'row',gap:12},tile:{flex:1,backgroundColor:'white',borderWidth:1,borderColor:'#E0E9E2',padding:15,borderRadius:16,gap:9},tileLabel:{fontSize:12,color:'#718578'},tileValue:{fontSize:19,fontWeight:'800',color:'#203B2B'},
+ accordion:{borderTopWidth:1,borderTopColor:'#E3E9E4',paddingVertical:18,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},accordionTitle:{fontSize:17,fontWeight:'700',color:'#203B2B'},arrow:{fontSize:23,color:'#4B755D'},detail:{paddingBottom:16,gap:8},info:{color:'#286E4E',fontWeight:'700',paddingVertical:7},warning:{fontSize:13,lineHeight:20,color:'#8A6E45'},disclaimer:{fontSize:12,lineHeight:19,color:'#827B6C',marginTop:8},
+ overlay:{flex:1,backgroundColor:'rgba(17,35,23,0.48)',justifyContent:'center',padding:24},dialog:{backgroundColor:'white',borderRadius:24,padding:24,gap:16},dialogTitle:{fontSize:23,fontWeight:'800',color:'#1C3428'},close:{backgroundColor:'#246C4C',padding:15,borderRadius:13,alignItems:'center'},closeText:{fontWeight:'800',color:'white'}
 });
