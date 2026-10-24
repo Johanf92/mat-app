@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "Matkontroll",
+    "slug": "matkontroll",
+    "scheme": "matkontroll",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}
