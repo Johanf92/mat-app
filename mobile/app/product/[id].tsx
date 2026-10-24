@@ -1,55 +1,126 @@
-import { useEffect, useState } from 'react';
-import { useLocalSearchParams, Link } from 'expo-router';
-import { SafeAreaView, ScrollView, Text, View, Pressable, Modal, Image, ActivityIndicator, StyleSheet } from 'react-native';
-import { FoodProduct, getProduct } from '../../src/openFoodFacts';
+import { useEffect, useState, type PropsWithChildren } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { type FoodProduct, getProduct } from '../../src/openFoodFacts';
+import { amount, NOVA, novaInfo, type NovaGroup } from '../../src/catalog';
+import { useMarket } from '../../src/MarketContext';
+import { colors, InfoSheet, SourceLink } from '../../src/ui';
 
-type Topic='nova'|'sugar'|'ingredients';
-const help:Record<Topic,{title:string;body:string}>={
- nova:{title:'Hva er NOVA?',body:'NOVA klassifiserer mat etter bearbeidingsgrad.\n\n1: Ubearbeidet eller minimalt bearbeidet\n2: Bearbeidede kulinariske ingredienser\n3: Bearbeidede matvarer\n4: Ultrabearbeidede matvarer\n\nNOVA er ikke en samlet vurdering av hvor sunn maten er.'},
- sugar:{title:'Hva betyr sukker per 100 g?',body:'Dette er totalt sukker, også naturlig forekommende sukker. Tallet alene forteller ikke om sukkeret er tilsatt.'},
- ingredients:{title:'Hvordan lese ingredienslisten?',body:'Ingrediensene er normalt oppført i synkende rekkefølge etter vekt. Manglende ingrediensinformasjon betyr ikke at produktet er fritt for bestemte stoffer.'}
-};
-function amount(n:number|null,unit='g'){return n===null?'Ikke oppgitt':n.toLocaleString('nb-NO',{maximumFractionDigits:1})+' '+unit;}
-export default function ProductScreen(){
- const {id}=useLocalSearchParams<{id:string}>();
- const [p,setP]=useState<FoodProduct|null>(null);
- const [loading,setLoading]=useState(true);
- const [error,setError]=useState('');
- const [topic,setTopic]=useState<Topic|null>(null);
- const [expanded,setExpanded]=useState<'ingredients'|'nutrition'|'additives'|null>(null);
- useEffect(()=>{const controller=new AbortController();setLoading(true);setP(null);setError('');
-  getProduct(id??'',controller.signal).then(item=>{if(!controller.signal.aborted){setP(item);if(!item)setError('Fant ikke produktet i Open Food Facts.');}}).catch(()=>{if(!controller.signal.aborted)setError('Kunne ikke hente produktet. Prøv igjen senere.');}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});
-  return ()=>controller.abort();
- },[id]);
- return <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.page}>
-  <Link href="/" style={s.back}>← Tilbake til søk</Link>
-  {loading&&<ActivityIndicator color="#246C4C" size="large"/>}
-  {!!error&&<Text style={s.body}>{error}</Text>}
-  {p&&<>
-   <View style={s.productHeader}>{p.image?<Image source={{uri:p.image}} style={s.photo} resizeMode="contain"/>:<View style={s.photo}/>}<View style={s.meta}><Text style={s.source}>OPEN FOOD FACTS</Text><Text style={s.title}>{p.name}</Text><Text style={s.brand}>{p.brand}</Text>{p.quantity&&<Text style={s.brand}>{p.quantity}</Text>}</View></View>
-   <View style={s.summary}><Text style={s.summaryTitle}>Kort oppsummert</Text><Text style={s.body}>{p.ingredients?'Ingredienslisten er tilgjengelig. Utforsk innholdet og næringsverdiene nedenfor.':'Ingredienslisten er ikke oppgitt for dette produktet.'} {p.nova===null?'Bearbeidingsgrad er ikke oppgitt.':''}</Text></View>
-   <View style={s.tiles}>
-    <Pressable onPress={()=>setTopic('nova')} style={s.tile}><Text style={s.tileLabel}>Bearbeiding  ⓘ</Text><Text style={s.tileValue}>{p.nova===null?'Ukjent':'NOVA '+p.nova}</Text></Pressable>
-    <Pressable onPress={()=>setTopic('sugar')} style={s.tile}><Text style={s.tileLabel}>Sukker / 100 g  ⓘ</Text><Text style={s.tileValue}>{amount(p.sugar)}</Text></Pressable>
-   </View>
-   <Pressable onPress={()=>setExpanded(expanded==='ingredients'?null:'ingredients')} style={s.accordion}><Text style={s.accordionTitle}>Ingredienser</Text><Text style={s.arrow}>{expanded==='ingredients'?'−':'+'}</Text></Pressable>
-   {expanded==='ingredients'&&<View style={s.detail}><Text style={s.body}>{p.ingredients||'Ikke oppgitt.'}</Text><Pressable onPress={()=>setTopic('ingredients')}><Text style={s.info}>ⓘ Slik leser du ingredienslisten</Text></Pressable></View>}
-   <Pressable onPress={()=>setExpanded(expanded==='nutrition'?null:'nutrition')} style={s.accordion}><Text style={s.accordionTitle}>Næringsinnhold</Text><Text style={s.arrow}>{expanded==='nutrition'?'−':'+'}</Text></Pressable>
-   {expanded==='nutrition'&&<View style={s.detail}><Text style={s.body}>Per 100 g / 100 ml (som oppgitt i datakilden)</Text><Text style={s.body}>Energi: {amount(p.energy,'kcal')}</Text><Text style={s.body}>Protein: {amount(p.protein)}</Text><Text style={s.body}>Sukker: {amount(p.sugar)}</Text><Text style={s.body}>Fiber: {amount(p.fiber)}</Text><Text style={s.body}>Salt: {amount(p.salt)}</Text></View>}
-   <Pressable onPress={()=>setExpanded(expanded==='additives'?null:'additives')} style={s.accordion}><Text style={s.accordionTitle}>Tilsetningsstoffer og allergener</Text><Text style={s.arrow}>{expanded==='additives'?'−':'+'}</Text></Pressable>
-   {expanded==='additives'&&<View style={s.detail}><Text style={s.body}>Registrerte tilsetningsstoffer: {p.additives.length?p.additives.map(x=>x.replace(/^en:/,'')).join(', '):'Ingen opplysninger registrert'}</Text><Text style={s.body}>Registrerte allergener: {p.allergens.length?p.allergens.map(x=>x.replace(/^en:/,'')).join(', '):'Ingen opplysninger registrert'}</Text><Text style={s.warning}>Manglende registrering betyr IKKE at produktet er uten tilsetningsstoffer eller allergener. Kontroller alltid emballasjen.</Text></View>}
-   <Text style={s.disclaimer}>Produktdata er hentet fra Open Food Facts og kan være feil eller ufullstendige. Sjekk alltid emballasjen, spesielt ved allergi. NOVA er ikke en helsescore.</Text>
-   <Text style={s.source}>Kilde: Open Food Facts · Strekkode: {p.code}</Text>
-  </>}
- </ScrollView>
- <Modal visible={topic!==null} transparent animationType="fade" onRequestClose={()=>setTopic(null)}><View style={s.overlay}><View style={s.dialog}><Text style={s.dialogTitle}>{topic?help[topic].title:''}</Text><Text style={s.body}>{topic?help[topic].body:''}</Text><Pressable onPress={()=>setTopic(null)} style={s.close}><Text style={s.closeText}>Lukk</Text></Pressable></View></View></Modal>
- </SafeAreaView>;
+type Topic = 'nova' | 'ingredients' | 'nutrition' | 'additives' | null;
+function Accordion({ title, children }: PropsWithChildren<{ title: string }>) {
+  const [open, setOpen] = useState(false);
+  return <View style={styles.accordion}>
+    <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => setOpen(!open)} style={styles.accordionHeader}>
+      <Text style={styles.accordionTitle}>{title}</Text><Text style={styles.arrow}>{open ? '−' : '+'}</Text>
+    </Pressable>{open && <View style={styles.details}>{children}</View>}
+  </View>;
 }
-const s=StyleSheet.create({
- safe:{flex:1,backgroundColor:'#FAFBF8'},page:{padding:24,paddingBottom:65,gap:16},back:{color:'#286E4E',fontSize:16,fontWeight:'700',marginBottom:8},
- productHeader:{flexDirection:'row',gap:14,alignItems:'center'},photo:{width:86,height:102,borderRadius:15,backgroundColor:'#E9EFE9'},meta:{flex:1,gap:5},source:{fontSize:11,fontWeight:'700',color:'#8C8069'},title:{fontSize:24,fontWeight:'800',color:'#1C3428'},brand:{fontSize:14,color:'#708477'},
- summary:{backgroundColor:'#E4F1E7',padding:19,borderRadius:18,gap:8,marginTop:8},summaryTitle:{fontSize:17,fontWeight:'800',color:'#21543B'},body:{fontSize:15,lineHeight:23,color:'#42594A'},
- tiles:{flexDirection:'row',gap:12},tile:{flex:1,backgroundColor:'white',borderWidth:1,borderColor:'#E0E9E2',padding:15,borderRadius:16,gap:9},tileLabel:{fontSize:12,color:'#718578'},tileValue:{fontSize:19,fontWeight:'800',color:'#203B2B'},
- accordion:{borderTopWidth:1,borderTopColor:'#E3E9E4',paddingVertical:18,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},accordionTitle:{fontSize:17,fontWeight:'700',color:'#203B2B'},arrow:{fontSize:23,color:'#4B755D'},detail:{paddingBottom:16,gap:8},info:{color:'#286E4E',fontWeight:'700',paddingVertical:7},warning:{fontSize:13,lineHeight:20,color:'#8A6E45'},disclaimer:{fontSize:12,lineHeight:19,color:'#827B6C',marginTop:8},
- overlay:{flex:1,backgroundColor:'rgba(17,35,23,0.48)',justifyContent:'center',padding:24},dialog:{backgroundColor:'white',borderRadius:24,padding:24,gap:16},dialogTitle:{fontSize:23,fontWeight:'800',color:'#1C3428'},close:{backgroundColor:'#246C4C',padding:15,borderRadius:13,alignItems:'center'},closeText:{fontWeight:'800',color:'white'}
+export default function ProductScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const { market } = useMarket();
+  const [product, setProduct] = useState<FoodProduct | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
+  const [topic, setTopic] = useState<Topic>(null);
+  const [fullIngredients, setFullIngredients] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true); setProduct(null); setError(''); setFullIngredients(false); setTopic(null);
+    getProduct(id ?? '', controller.signal).then(p => {
+      if (!controller.signal.aborted) { setProduct(p); if (!p) setError('Produktet finnes ikke i Open Food Facts.'); }
+    }).catch(e => {
+      if (!controller.signal.aborted) setError(e instanceof Error && e.name !== 'TypeError' ? e.message : 'Kunne ikke hente produktet. Sjekk nettet og prøv igjen.');
+    }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [id, retry]);
+  const p = product;
+  const nova = novaInfo(p?.nova ?? null);
+  const titles: Record<Exclude<Topic, null>, string> = { nova: 'Hva betyr NOVA?', ingredients: 'Om ingredienslisten', nutrition: 'Slik leser du næringsinnhold', additives: 'Om tilsetningsstoffer' };
+  return <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
+    <View style={styles.toolbar}><Pressable accessibilityRole="button" onPress={() => router.canGoBack() ? router.back() : router.replace('/')} style={styles.backButton}><Text style={styles.back}>← Tilbake til søk</Text></Pressable></View>
+    <ScrollView contentContainerStyle={styles.page}>
+      {loading && <ActivityIndicator color={colors.green} size="large" />}
+      {!!error && <View style={styles.details}><Text accessibilityRole="alert" style={styles.body}>{error}</Text><Pressable onPress={() => setRetry(x => x + 1)} style={styles.infoButton}><Text style={styles.info}>Prøv igjen</Text></Pressable></View>}
+      {p && <>
+        <View style={styles.productHeader}>
+          {p.image ? <Image source={{ uri: p.image }} style={styles.photo} resizeMode="contain" /> : <View style={styles.photo} />}
+          <View style={styles.meta}><Text style={styles.brand}>{p.brand}</Text><Text accessibilityRole="header" style={styles.title}>{p.name}</Text>{!!p.quantity && <Text style={styles.caption}>{p.quantity}</Text>}</View>
+        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel={'Bearbeidingsgrad. ' + (p.nova ? 'NOVA ' + p.nova : 'Ikke oppgitt') + '. Trykk for forklaring.'}
+          onPress={() => setTopic('nova')} style={[styles.novaCard, { backgroundColor: nova.background, borderColor: nova.accent }]}>
+          <View style={styles.spread}><Text style={[styles.novaCaption, { color: nova.foreground }]}>BEARBEIDINGSGRAD</Text><Text style={{ color: nova.foreground }}>ⓘ</Text></View>
+          <Text style={[styles.novaTitle, { color: nova.foreground }]}>{p.nova ? 'NOVA ' + p.nova + ' · ' + nova.label : 'Bearbeidingsgrad ikke oppgitt'}</Text>
+          <Text style={[styles.caption, { color: nova.foreground }]}>{p.nova ? 'Trykk for forklaring. Fargen viser bearbeiding, ikke en helsescore.' : 'Vi gjetter ikke ut fra produktnavnet. Trykk for å lese om NOVA.'}</Text>
+        </Pressable>
+        <View style={styles.sectionHeader}><Text style={styles.section}>Makroer</Text><Pressable accessibilityRole="button" accessibilityLabel="Forklaring av næringsinnhold" onPress={() => setTopic('nutrition')} style={styles.infoButton}><Text style={styles.info}>Hva betyr tallene? ⓘ</Text></Pressable></View>
+        <Text style={styles.caption}>Per 100 g / 100 ml, slik datakilden oppgir verdiene.</Text>
+        <View style={styles.macros}>{([['Protein', p.protein], ['Fett', p.fat], ['Karbohydrat', p.carbs]] as const).map(([label, value]) => <View key={label} style={styles.macro}><Text style={styles.caption}>{label}</Text><Text style={styles.macroValue}>{value === null ? '—' : amount(value)}</Text></View>)}</View>
+        {[p.protein, p.fat, p.carbs].some(x => x === null) && <Text style={styles.caption}>— betyr at opplysningen mangler, ikke at mengden er null.</Text>}
+        <View style={styles.accordions}>
+          <Accordion key={p.code + '-ingredients'} title="Ingredienser">
+            <Text style={styles.caption}>{['no', 'nb'].includes(p.ingredientLanguage) ? 'Tekst registrert i norsk språkfelt.' : 'Tekst fra datakilden. Kan inneholde flere språk; ikke automatisk oversatt.'}</Text>
+            <Text style={styles.body} numberOfLines={fullIngredients ? undefined : 5}>{p.ingredients || 'Ingredienslisten er ikke oppgitt.'}</Text>
+            {!!p.ingredients && <Pressable accessibilityRole="button" accessibilityState={{ expanded: fullIngredients }} onPress={() => setFullIngredients(!fullIngredients)} style={styles.infoButton}><Text style={styles.info}>{fullIngredients ? 'Vis mindre' : 'Vis hele teksten'}</Text></Pressable>}
+            <Pressable accessibilityRole="button" onPress={() => setTopic('ingredients')} style={styles.infoButton}><Text style={styles.info}>Om ingredienslisten ⓘ</Text></Pressable>
+          </Accordion>
+          <Accordion key={p.code + '-nutrition'} title="Alt næringsinnhold">
+            <Text style={styles.caption}>Per 100 g / 100 ml. Ingen porsjoner er beregnet.</Text>
+            {([['Energi', p.energy, 'kcal'], ['Protein', p.protein, 'g'], ['Fett', p.fat, 'g'], ['Karbohydrat', p.carbs, 'g'], ['Hvorav sukkerarter', p.sugar, 'g'], ['Fiber', p.fiber, 'g'], ['Salt', p.salt, 'g']] as const).map(([label, value, unit]) => <View key={label} style={styles.nutrientRow}><Text style={styles.body}>{label}</Text><Text style={styles.nutrientValue}>{amount(value, unit)}</Text></View>)}
+          </Accordion>
+          <Accordion key={p.code + '-additives'} title={'Tilsetningsstoffer' + (p.additives.length ? ' · ' + p.additives.length + ' registrert' : '')}>
+            <Text style={styles.body}>{p.additives.length ? p.additives.map(x => x.replace(/^[a-z]{2}:/, '').replace(/^e/, 'E')).join(', ') : 'Ingen opplysninger registrert.'}</Text>
+            <Text style={styles.caption}>Dette er registrerte opplysninger, ikke en fullstendig kontroll av innholdet.</Text>
+            <Pressable accessibilityRole="button" onPress={() => setTopic('additives')} style={styles.infoButton}><Text style={styles.info}>Hva betyr E-numrene? ⓘ</Text></Pressable>
+          </Accordion>
+          <Accordion key={p.code + '-allergens'} title="Allergenopplysninger">
+            <Text style={styles.body}>{p.allergens.length ? p.allergens.map(x => x.replace(/^[a-z]{2}:/, '')).join(', ') : 'Allergenopplysninger er ikke registrert.'}</Text>
+            <Text style={styles.warning}>Manglende opplysninger betyr ikke allergenfritt. Kontroller alltid emballasjen ved allergi.</Text>
+          </Accordion>
+          <Accordion key={p.code + '-source'} title="Kilde og datakvalitet">
+            <Text style={styles.body}>Dataene kommer fra Open Food Facts og kan være feil eller ufullstendige.</Text>
+            <Text style={styles.body}>{market.tag === null ? 'Du søker i alle land.' : p.countries.includes(market.tag) ? 'Registrert for ' + market.name + '. Dette er ikke en lagerstatus.' : 'Ikke registrert for ' + market.name + ' i dataene vi har. Varen kan likevel finnes der.'}</Text>
+            <Text style={styles.caption}>Strekkode: {p.code}</Text>
+            {p.modifiedAt !== null && p.modifiedAt > 0 && <Text style={styles.caption}>Sist endret hos kilden: {new Date(p.modifiedAt * 1000).toLocaleDateString('nb-NO')}. Dette er ikke en kvalitetsgodkjenning.</Text>}
+            <SourceLink label="Se eller foreslå rettelser hos Open Food Facts" url={'https://world.openfoodfacts.org/product/' + p.code} />
+          </Accordion>
+        </View>
+        <Text style={styles.caption}>Velg selv. Vi viser innhold og bearbeiding, ikke en fasit på hva du skal spise.</Text>
+        <SourceLink label="Kilde: Open Food Facts" url={'https://world.openfoodfacts.org/product/' + p.code} />
+      </>}
+    </ScrollView>
+    <InfoSheet visible={topic !== null} title={topic ? titles[topic] : ''} onClose={() => setTopic(null)}>
+      {topic === 'nova' && <>
+        <Text style={styles.body}>NOVA grupperer matvarer etter bearbeiding. Fargene er Matkontrolls visuelle hjelpemiddel, ikke en offisiell helseskala.</Text>
+        {([1, 2, 3, 4] as NovaGroup[]).map(group => <View key={group} style={[styles.novaExplanation, { backgroundColor: NOVA[group].background, borderColor: NOVA[group].accent, borderWidth: p?.nova === group ? 2 : 0 }]}>
+          <Text style={[styles.explanationTitle, { color: NOVA[group].foreground }]}>NOVA {group}{p?.nova === group ? ' · Dette produktet' : ''}</Text><Text style={[styles.body, { color: NOVA[group].foreground }]}>{NOVA[group].detail}</Text>
+        </View>)}
+        <Text style={styles.body}>Gruppene beskriver ulike typer bearbeiding. NOVA 2 er matlagingsingredienser, ikke et eget trinn på en sunnhetsskala. Grå betyr at informasjon mangler.</Text>
+        <SourceLink label="Kilde: Open Food Facts om NOVA" url="https://world.openfoodfacts.org/nova" />
+      </>}
+      {topic === 'nutrition' && <><Text style={styles.body}>Protein, fett og karbohydrat vises separat. Sukkerarter er en del av karbohydratene, ikke noe du skal legge til en gang til.</Text><Text style={styles.body}>Sukkerarter inkluderer naturlig forekommende sukker. Tallet forteller ikke alene hvor mye som er tilsatt. Sammenlign samme type vare og samme målegrunnlag.</Text><Text style={styles.caption}>Målegrunnlaget er ikke alltid entydig i API-et. Derfor viser vi ikke beregnede porsjoner eller automatiske rangeringer ennå.</Text></>}
+      {topic === 'ingredients' && <><Text style={styles.body}>Dette er teksten datakilden har registrert, ikke en oppskrift vi har utledet. Vi rydder bare i tegnkoder som &amp;quot; og beholder hele teksten.</Text><Text style={styles.body}>Feilregistrerte lister kan inneholde flere språk eller næringsdeklarasjon. Vi kutter ikke bort innhold automatisk, siden viktige opplysninger kan gå tapt.</Text></>}
+      {topic === 'additives' && <><Text style={styles.body}>Et E-nummer identifiserer et tilsetningsstoff. Koden alene sier ikke hvor mye som er brukt i produktet.</Text><Text style={styles.body}>Vi viser foreløpig kodene fra datakilden. Norske forklaringer for hvert stoff og gruppering etter funksjon kommer i en egen oppdatering, med kilder.</Text><Text style={styles.caption}>Ingen registrerte koder betyr ikke at vi har bekreftet at varen er fri for tilsetningsstoffer.</Text></>}
+    </InfoSheet>
+  </SafeAreaView>;
+}
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.page }, toolbar: { paddingHorizontal: 18, borderBottomWidth: 1, borderBottomColor: colors.line },
+  backButton: { alignSelf: 'flex-start', minHeight: 48, justifyContent: 'center', paddingHorizontal: 4 }, back: { fontSize: 16, fontWeight: '700', color: colors.green },
+  page: { padding: 22, paddingBottom: 30, gap: 16 }, productHeader: { flexDirection: 'row', gap: 15, alignItems: 'center' },
+  photo: { width: 80, height: 100, borderRadius: 14, backgroundColor: '#E9EFE9' }, meta: { flex: 1, gap: 5 },
+  title: { fontSize: 24, fontWeight: '800', color: colors.ink }, brand: { fontSize: 14, color: colors.muted },
+  body: { fontSize: 15, lineHeight: 23, color: colors.ink }, caption: { fontSize: 12, lineHeight: 19, color: colors.muted },
+  novaCard: { borderWidth: 1, padding: 18, borderRadius: 18, gap: 9 }, spread: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
+  novaCaption: { fontSize: 11, fontWeight: '800', letterSpacing: 0.8 }, novaTitle: { fontSize: 21, fontWeight: '800' },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }, section: { fontSize: 18, fontWeight: '800', color: colors.ink },
+  infoButton: { minHeight: 44, justifyContent: 'center', paddingVertical: 8 }, info: { fontSize: 13, fontWeight: '700', color: colors.green },
+  macros: { flexDirection: 'row', gap: 9, flexWrap: 'wrap' }, macro: { flex: 1, minWidth: 85, padding: 12, gap: 7, backgroundColor: 'white', borderWidth: 1, borderColor: colors.line, borderRadius: 13 },
+  macroValue: { fontSize: 18, fontWeight: '700', color: colors.ink }, accordions: { marginTop: 2 }, accordion: { borderTopWidth: 1, borderTopColor: colors.line },
+  accordionHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 17 }, accordionTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.ink },
+  arrow: { fontSize: 24, color: colors.green }, details: { paddingBottom: 17, gap: 12 }, nutrientRow: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 },
+  nutrientValue: { fontSize: 15, lineHeight: 23, color: colors.ink, fontWeight: '600' }, warning: { fontSize: 13, lineHeight: 21, color: '#825617' },
+  novaExplanation: { padding: 13, borderRadius: 12, gap: 4 }, explanationTitle: { fontSize: 15, fontWeight: '800' },
 });
