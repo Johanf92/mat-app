@@ -7,7 +7,7 @@ import { amount, NOVA, novaInfo, type NovaGroup } from '../../src/catalog';
 import { useMarket } from '../../src/MarketContext';
 import { colors, InfoSheet, SourceLink, NovaBadge } from '../../src/ui';
 import { ADDITIVE_GENERAL_SOURCE, formatAdditiveCode, summarizeAdditives, type AdditiveInfo } from '../../src/additives';
-import { comparableCategory, findAlternatives, productProfile } from '../../src/alternatives';
+import { comparableCategory, findAlternatives, productProfile, candidateNote } from '../../src/alternatives';
 
 type Topic = 'nova' | 'ingredients' | 'nutrition' | 'additives' | null;
 function Accordion({ title, children }: PropsWithChildren<{ title: string }>) {
@@ -37,7 +37,7 @@ export default function ProductScreen() {
     if(!product||alternativesLoading||!comparableCategory(product))return;
     setAlternativesLoading(true);setAlternativesRequested(true);setAlternativesError('');setAlternatives([]);
     try{setAlternatives(await findAlternatives(product,market));}
-    catch{setAlternativesError('Kunne ikke hente alternativer akkurat nå.');}
+    catch(e){setAlternativesError(e instanceof Error ? e.message : 'Kunne ikke hente alternativer akkurat nå.');}
     finally{setAlternativesLoading(false);}
   }
   useEffect(() => {
@@ -118,20 +118,21 @@ export default function ProductScreen() {
               {!!alternativesError && <Text accessibilityRole="alert" style={styles.warning}>{alternativesError}</Text>}
               {alternativesRequested && !alternativesLoading && !alternativesError && alternatives.length === 0 && <Text style={styles.caption}>Ingen relevante alternativer funnet i søkeindeksen. Nyere produkter kan mangle – prøv å velge en vare selv.</Text>}
               {!alternativesLoading && !alternativesError && alternatives.map(other => <View key={other.code} style={styles.altRow}>
-                {other.image ? <Image source={{ uri: other.image }} style={styles.altImage} resizeMode="contain" /> : <View style={styles.altImage} />}
+                {other.image ? <Image source={{ uri: other.image }} style={styles.altImage} resizeMode="contain" /> : <View style={styles.altImageFallback} accessibilityLabel="Produktbilde mangler"><Text style={styles.altImageEmoji}>{productProfile(other)?.kind.startsWith('cola') ? '🥤' : '🥛'}</Text></View>}
                 <View style={{ flex: 1, gap: 6 }}>
                   <Pressable accessibilityRole="button" accessibilityLabel={'Se ' + other.name} onPress={() => router.push({ pathname: '/product/[id]', params: { id: other.code } })}>
                     <Text style={styles.additiveName}>{other.name}</Text><Text style={styles.caption}>{other.brand}</Text>
                   </Pressable>
                   <Text style={styles.caption}>Protein {amount(other.protein)} · Fett {amount(other.fat)} · Karbohydrat {amount(other.carbs)}</Text>
                   <NovaBadge group={other.nova} compact />
+                  {!!candidateNote(p, other) && <Text style={styles.candidateNote}>{candidateNote(p, other)}</Text>}
                   <Pressable accessibilityRole="button" accessibilityLabel={'Sammenlign ' + p.name + ' med ' + other.name}
                     onPress={() => router.push({ pathname: '/compare', params: { left: p.code, right: other.code } })} style={styles.compareButton}>
                     <Text style={styles.compareText}>Sammenlign med denne →</Text>
                   </Pressable>
                 </View>
               </View>)}
-              {alternativesRequested && !alternativesLoading && !alternativesError && alternatives.length > 0 && <Text style={styles.caption}>Samme kategori er et utgangspunkt, ikke en garanti for samme bruksområde, bedre innhold eller tilgjengelighet i butikk.</Text>}
+              {alternativesRequested && !alternativesLoading && !alternativesError && alternatives.length > 0 && <Text style={styles.caption}>Forslagene er basert på produkttype og tilgjengelige kildedata, ikke på sunnhetsrangering. Kontroller variant, emballasje og tilgjengelighet.</Text>}
             </> : <Text testID="alternatives-unavailable" style={styles.caption}>Alternativsøk støttes ikke for denne produktkategorien ennå.</Text>}
             <Pressable accessibilityRole="button" testID="manual-compare"
               onPress={() => router.push({ pathname: '/compare', params: { left: p.code } })} style={styles.manualCompare}>
@@ -205,5 +206,8 @@ const styles = StyleSheet.create({
   manualCompare: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', paddingVertical: 7 },
   compareText: { fontSize: 14, color: colors.green, fontWeight: '700' },
   altImage: { width: 58, height: 70, backgroundColor: '#EBF1EB', borderRadius: 9 },
+  altImageFallback: { width: 58, height: 70, backgroundColor: '#EBF1EB', borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
+  altImageEmoji: { fontSize: 24 },
+  candidateNote: { color: '#80551C', fontSize: 12, lineHeight: 18 },
   novaExplanation: { padding: 13, borderRadius: 12, gap: 4 }, explanationTitle: { fontSize: 15, fontWeight: '800' },
 });
