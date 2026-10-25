@@ -157,7 +157,8 @@ function searchRecordDocumentation(p:FoodProduct):number {
    .filter(v=>v!==null).length;
  const contradictions=(p.sugar!==null&&p.carbs!==null&&p.sugar>p.carbs+0.1?1:0)
    +(p.energy===0&&[p.protein,p.fat,p.carbs].some(x=>x!==null&&x>=1)?1:0)
-   +(p.energyKJConflict?1:0);
+   +(p.energyKJConflict?1:0)
+   +([p.protein,p.fat,p.carbs,p.sugar,p.fiber,p.salt].filter(x=>x!==null&&x>100.1).length);
  return available*2+(p.ingredients?.trim()?5:0)
    +(p.nova!==null?2:0)+(p.nutriScore!==null?1:0)
    +(p.image?2:0)
