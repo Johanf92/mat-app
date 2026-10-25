@@ -1,5 +1,9 @@
 import { DEFAULT_MARKET, numeric, readableText, type Market, type NovaGroup } from './catalog';
 const BASE = 'https://world.openfoodfacts.org';
+const SEARCH_BASE = 'https://search.openfoodfacts.org';
+// Search-a-licious is a separate, Lucene-based search service. Its result shape
+// uses "hits", unlike the legacy CGI search and product lookup endpoints.
+const SEARCH_FIELDS = 'code,product_name,brands,countries_tags,categories_tags,nova_group,nutriments,ingredients_text,quantity';
 const FIELDS = [
   'code', 'product_name', 'product_name_no', 'product_name_nb', 'product_name_en',
   'brands', 'image_front_small_url', 'image_front_url', 'ingredients_text',
@@ -18,7 +22,18 @@ export type FoodProduct = {
 type Raw = Record<string, unknown>;
 function record(value: unknown): Raw { return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Raw : {}; }
 function tags(value: unknown): string[] { return Array.isArray(value) ? [...new Set(value.filter((x): x is string => typeof x === 'string'))] : []; }
-function first(...values: unknown[]): string { return values.map(readableText).find(Boolean) ?? ''; }
+function first(...values: unknown[]): string {
+ for (const value of values) {
+  if (typeof value === 'string') { const text = readableText(value); if (text) return text; }
+  if (Array.isArray(value)) { const text = first(...value); if (text) return text; }
+  if (value && typeof value === 'object') {
+   const r = record(value);
+   const text = first(r.nb, r.no, r.en, r.main);
+   if (text) return text;
+  }
+ }
+ return '';
+}
 export function normalize(value: unknown): FoodProduct | null {
   const raw = record(value);
   const code = typeof raw.code === 'string' || typeof raw.code === 'number' ? String(raw.code).trim() : '';
@@ -42,16 +57,25 @@ export function normalize(value: unknown): FoodProduct | null {
     countries: tags(raw.countries_tags), categories: tags(raw.categories_tags), modifiedAt: numeric(raw.last_modified_t),
   };
 }
+// User text is treated as search terms, never as Lucene query syntax.
+function safeSearchText(text: string): string {
+ return text.normalize('NFKC')
+  .replace(/[+!(){}\[\]^"~*?:\\/|&;=-]/g, ' ')
+  .replace(/\s+/g, ' ').trim();
+}
+function searchQuery(text: string, market: Market): string {
+ const query = safeSearchText(text);
+ // Country is a server-side filter *and* separately validated after receiving hits.
+ return market.tag ? query + ' countries_tags:"' + market.tag + '"' : query;
+}
+function searchUrl(q: string, pageSize: number): string {
+ const params = new URLSearchParams({
+  q, page_size: String(pageSize), page: '1', langs: 'no,en', fields: SEARCH_FIELDS
+ });
+ return SEARCH_BASE + '/search?' + params.toString();
+}
 export function buildSearchUrl(query: string, market: Market = DEFAULT_MARKET): string {
-  // Keep the existing full-text endpoint. v2 search does not support free text.
-  const params = new URLSearchParams({ search_simple: '1', action: 'process', json: '1',
-    page_size: '20', page: '1', search_terms: query.trim(), fields: FIELDS, app_name: 'Matkontroll' });
-  if (market.tag) {
-    params.set('tagtype_0', 'countries');
-    params.set('tag_contains_0', 'contains');
-    params.set('tag_0', market.tag);
-  }
-  return BASE + '/cgi/search.pl?' + params;
+ return searchUrl(searchQuery(query, market), 40);
 }
 export function buildProductUrl(barcode: string): string {
   // Deliberately no country filter: barcode lookup is global, even on holiday.
@@ -83,7 +107,11 @@ async function getJson(url: string, kind: 'search' | 'product', signal?: AbortSi
     } });
     if (response.status === 404 && kind === 'product') return { status: 0 };
     if (response.status === 429) throw new Error('Open Food Facts ber oss vente litt. Prøv igjen om ett minutt.');
-    if (!response.ok) throw new Error('Open Food Facts er midlertidig utilgjengelig. Prøv igjen senere.');
+    if (!response.ok) {
+      if (response.status === 503 || response.status === 502 || response.status === 504)
+        throw new Error(kind === 'search' ? 'Søketjenesten svarer ikke akkurat nå. Prøv igjen om litt, eller bruk strekkoden.' : 'Produktdatabasen svarer ikke akkurat nå. Prøv igjen litt senere.');
+      throw new Error('Kunne ikke hente opplysninger (HTTP ' + response.status + '). Prøv igjen.');
+    }
     const result: unknown = await response.json();
     remember(url, result);
     return result;
@@ -95,12 +123,16 @@ async function getJson(url: string, kind: 'search' | 'product', signal?: AbortSi
     signal?.removeEventListener('abort', abort);
   }
 }
+export function searchResults(data: unknown, market: Market): FoodProduct[] {
+ const payload = record(data);
+ if (!Array.isArray(payload.hits)) throw new Error('Søketjenesten ga et uventet svar. Prøv igjen senere.');
+ const results = payload.hits.map(normalize).filter((p): p is FoodProduct => p !== null);
+ // The search index can contain stale country data. Never silently ignore the market choice.
+ return [...new Map(results.filter(p => !market.tag || p.countries.includes(market.tag)).map(p => [p.code, p])).values()];
+}
 export async function searchProducts(query: string, market: Market = DEFAULT_MARKET, signal?: AbortSignal): Promise<FoodProduct[]> {
-  if (query.trim().length < 2) return [];
-  const data = record(await getJson(buildSearchUrl(query, market), 'search', signal));
-  const products = (Array.isArray(data.products) ? data.products : []).map(normalize).filter((p): p is FoodProduct => p !== null);
-  // Defense in depth: do not silently show another market if the upstream filter fails.
-  return [...new Map(products.filter(p => !market.tag || p.countries.includes(market.tag)).map(p => [p.code, p])).values()];
+ if (safeSearchText(query).length < 2) return [];
+ return searchResults(await getJson(buildSearchUrl(query, market), 'search', signal), market);
 }
 export async function getProduct(barcode: string, signal?: AbortSignal): Promise<FoodProduct | null> {
   if (!/^\d{8,14}$/.test(barcode)) return null;
@@ -109,17 +141,13 @@ export async function getProduct(barcode: string, signal?: AbortSignal): Promise
 }
 
 export function buildCategoryUrl(category: string, market: Market = DEFAULT_MARKET): string {
- const params = new URLSearchParams({
-  categories_tags: category, fields: FIELDS, page_size: '60', page: '1', sort_by: 'popularity_key'
- });
- // The v2 structured search reference documents countries_tags_en.
- if (market.tag) params.set('countries_tags_en', market.tag.replace(/^en:/, ''));
- return BASE + '/api/v2/search?' + params.toString();
+ if (!/^en:[a-z0-9-]+$/.test(category)) throw new Error('Ugyldig kategori.');
+ // Search-a-licious supports filter clauses in its q parameter.
+ const q = 'categories_tags:"' + category + '"' + (market.tag ? ' countries_tags:"' + market.tag + '"' : '');
+ return searchUrl(q, 60);
 }
 export async function searchByCategory(category: string, market: Market = DEFAULT_MARKET, signal?: AbortSignal): Promise<FoodProduct[]> {
  if (!/^en:[a-z0-9-]+$/.test(category)) return [];
- const data = record(await getJson(buildCategoryUrl(category, market), 'search', signal));
- const products = (Array.isArray(data.products) ? data.products : []).map(normalize).filter((p): p is FoodProduct => p !== null);
- // Never silently widen the selected market if the upstream filter is ignored.
- return [...new Map(products.filter(p => p.categories.includes(category) && (!market.tag || p.countries.includes(market.tag))).map(p => [p.code, p])).values()];
+ const items = searchResults(await getJson(buildCategoryUrl(category, market), 'search', signal), market);
+ return items.filter(p => p.categories.includes(category));
 }
