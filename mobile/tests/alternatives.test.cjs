@@ -21,7 +21,7 @@ loaded.require=id=>{
  throw Error('Unexpected dependency: '+id);
 };
 loaded._compile(out.outputText,sourcePath);
-const {productProfile,comparableCategory,relevantAlternatives,findAlternatives,candidateNote,labeledLactoseFree}=loaded.exports;
+const {productProfile,comparableCategory,relevantAlternatives,findAlternatives,candidateNote,labeledLactoseFree,relatedVariantComparisonNote}=loaded.exports;
 const market={code:'no',name:'Norge',tag:'en:norway'};
 const base={code:'7394376616037',name:'iKaffe',brand:'Oatly',ingredients:'Havrebas, rapsolje, salt',categories:[],countries:['en:norway'],nova:3,
  protein:1.1,fat:3,carbs:7.1,sugar:3.4,energy:61,salt:0.1,fiber:0.8,additives:[],allergens:[]};
@@ -194,4 +194,15 @@ test('lactose-free label does not follow from an unspecified name or from missin
  assert.equal(labeledLactoseFree(candidate),true);
  assert.match(candidateNote(source,candidate),/merket laktosefri/);
  assert.match(candidateNote(source,candidate),/ikke om produktet er melkefritt/);
+});
+
+test('original and zero cola are related variants for manual comparison, never identical recipes', () => {
+  const original=next('1111111122200',{name:'Coca-Cola Original Taste',brand:'Coca-Cola',sugar:10.6,categories:['en:colas']});
+  const zero=next('1111111122201',{name:'Coca-Cola Zero Sugar',brand:'Coca-Cola',sugar:0,categories:['en:colas']});
+  assert.equal(productProfile(original).kind,'cola-regular');
+  assert.equal(productProfile(zero).kind,'cola-sugar-free');
+  assert.match(relatedVariantComparisonNote(original,zero),/produkt A er vanlig cola og produkt B er sukkerfri cola/);
+  assert.match(relatedVariantComparisonNote(zero,original),/produkt A er sukkerfri cola og produkt B er vanlig cola/);
+  assert.equal(relatedVariantComparisonNote(original,{...original,code:'1111111122202',brand:'Other Cola'}),null);
+  assert.equal(relatedVariantComparisonNote(base,zero),null);
 });
