@@ -7,7 +7,7 @@ const NORWEGIAN_LABELS: Readonly<Record<string,string>> = {
   milk:'Melk',melk:'Melk',lettmelk:'Melk',helmelk:'Melk',
   'skimmed-milk':'Melk','semi-skimmed-milk':'Melk','whole-milk':'Melk',
   'cow-s-milk':'Melk','cow-milk':'Melk',lait:'Melk',mjolk:'Melk',
-  egg:'Egg',eggs:'Egg',egg:'Egg',eggprodukter:'Egg',
+  egg:'Egg',eggs:'Egg',eggprodukter:'Egg',
   fish:'Fisk',fisk:'Fisk',crustaceans:'Skalldyr',skalldyr:'Skalldyr',
   molluscs:'Bløtdyr',blotdyr:'Bløtdyr',
   peanuts:'Peanøtter',peanut:'Peanøtter',peanotter:'Peanøtter',
