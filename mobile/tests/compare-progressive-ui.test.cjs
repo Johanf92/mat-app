@@ -67,6 +67,7 @@ function harness(){
   },
   '../src/ingredientEvidence':{displayIngredientText:s=>s},
   '../src/productDataStatus':{productDataStatus:()=>({headline:'Oppgitt i kilden: 7 av 7 næringsfelt.',notes:[]})},
+  '../src/nutriScore':{nutriScoreLabel:x=>x?x.toUpperCase():'Ikke oppgitt'},
   '../src/ui':{colors:{green:'#236b4b',page:'#fafbf8',ink:'#1c3428',muted:'#617368',line:'#dde6df'},
    InfoSheet:'InfoSheet',NovaBadge:'NovaBadge',SourceLink:'SourceLink'}
  };
@@ -154,4 +155,11 @@ test('a failed remote comparison photo shows a visible fallback instead of blank
   assert.match(text(after),/Kunne ikke laste bildet/);
   assert.equal(h.routes.length,0);
  } finally {first.image=before;}
+});
+
+
+test('comparison shows Nutri-Score as an independent source value, not a ranking',()=>{
+ const h=harness(),whole=text(h.render());
+ assert.match(whole,/Nutri-Score: Ikke oppgitt/);
+ assert.doesNotMatch(whole,/best ernæringsprofil|sunnere vinner/);
 });

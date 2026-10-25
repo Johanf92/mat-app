@@ -18,6 +18,8 @@
 - [x] Separate søk for havregryn registrert som glutenfri og annen havre, uten å love allergen-/cøliakisikkerhet
 - [x] Forklaringer av vanlige funksjonsord i ingredienslister, med Mattilsynet som kilde
 - [x] Synlig oversikt over manglende næringsdata og interne motsetninger i kilden
+- [x] Nutri-Score som frivillig, separat og kildebasert ernæringsprofil ved siden av NOVA, uten lokal beregning
+- [x] Kort faktabasert oppsummering på produktsiden
 
 ## Prioriteres videre
 - [ ] Test og forbedre reelle treff for iKaffe, gresk yoghurt og flere norske produktkategorier

@@ -11,8 +11,10 @@ import { ingredientTerms, type IngredientTermInfo } from '../../src/ingredientTe
 import { comparableCategory, findAlternatives, productProfile, candidateNote } from '../../src/alternatives';
 import { displayIngredientText, ingredientCodeNote } from '../../src/ingredientEvidence';
 import { productDataStatus } from '../../src/productDataStatus';
+import { nutriScoreDescription, nutriScoreLabel, NUTRI_SCORE_SOURCE, NORWEGIAN_LABEL_SOURCE } from '../../src/nutriScore';
+import { productSnapshot } from '../../src/productSnapshot';
 
-type Topic = 'nova' | 'ingredients' | 'nutrition' | 'additives' | null;
+type Topic = 'nova' | 'nutriscore' | 'ingredients' | 'nutrition' | 'additives' | null;
 function Accordion({ title, children }: PropsWithChildren<{ title: string }>) {
   const [open, setOpen] = useState(false);
   return <View style={styles.accordion}>
@@ -61,7 +63,7 @@ export default function ProductScreen() {
   const alternativesSupported = p !== null && comparableCategory(p) !== null;
   // The heading, cards and raw-data disclosure share the same presentation model.
   const additives = summarizeAdditives(p?.additives ?? []);
-  const titles: Record<Exclude<Topic, null>, string> = { nova: 'Hva betyr NOVA?', ingredients: 'Om ingredienslisten', nutrition: 'Slik leser du næringsinnhold', additives: 'Om tilsetningsstoffer' };
+  const titles: Record<Exclude<Topic, null>, string> = { nova: 'Hva betyr NOVA?', nutriscore:'Hva betyr Nutri-Score?', ingredients: 'Om ingredienslisten', nutrition: 'Slik leser du næringsinnhold', additives: 'Om tilsetningsstoffer' };
   return <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
     <View style={styles.toolbar}><Pressable accessibilityRole="button" onPress={() => router.canGoBack() ? router.back() : router.replace('/')} style={styles.backButton}><Text style={styles.back}>← Tilbake til søk</Text></Pressable></View>
     <ScrollView contentContainerStyle={styles.page}>
@@ -82,10 +84,23 @@ export default function ProductScreen() {
           <Text style={[styles.novaTitle, { color: nova.foreground }]}>{p.nova ? 'NOVA ' + p.nova + ' · ' + nova.label : 'Bearbeidingsgrad ikke oppgitt'}</Text>
           <Text style={[styles.caption, { color: nova.foreground }]}>{p.nova ? 'Trykk for forklaring. Fargen viser bearbeiding, ikke en helsescore.' : 'Vi gjetter ikke ut fra produktnavnet. Trykk for å lese om NOVA.'}</Text>
         </Pressable>
+        <Pressable testID="nutriscore-info" accessibilityRole="button"
+          accessibilityLabel={'Nutri-Score, ernæringsprofil: '+nutriScoreLabel(p.nutriScore)+'. Trykk for forklaring.'}
+          onPress={()=>setTopic('nutriscore')} style={styles.nutriRow}>
+          <View style={{flex:1,gap:2}}><Text style={styles.nutriHeading}>Nutri-Score · næringsprofil</Text>
+            <Text style={styles.caption}>Et supplement til NOVA, ikke en bearbeidingsgrad.</Text>
+          </View>
+          <Text style={styles.nutriValue}>{nutriScoreLabel(p.nutriScore)} ⓘ</Text>
+        </Pressable>
         <View style={styles.sectionHeader}><Text style={styles.section}>Makroer</Text><Pressable accessibilityRole="button" accessibilityLabel="Forklaring av næringsinnhold" onPress={() => setTopic('nutrition')} style={styles.infoButton}><Text style={styles.info}>Hva betyr tallene? ⓘ</Text></Pressable></View>
         <Text style={styles.caption}>Per 100 g / 100 ml, slik datakilden oppgir verdiene.</Text>
         <View style={styles.macros}>{([['Protein', p.protein], ['Fett', p.fat], ['Karbohydrat', p.carbs]] as const).map(([label, value]) => <View key={label} style={styles.macro}><Text style={styles.caption}>{label}</Text><Text style={styles.macroValue}>{value === null ? '—' : amount(value)}</Text></View>)}</View>
         {[p.protein, p.fat, p.carbs].some(x => x === null) && <Text style={styles.caption}>— betyr at opplysningen mangler, ikke at mengden er null.</Text>}
+        <View testID="product-snapshot" style={styles.snapshot}>
+          <Text style={styles.snapshotHeading}>Kort fortalt</Text>
+          {productSnapshot(p,additives.items.length).map((fact,index)=><Text key={index} style={styles.body}>{fact}</Text>)}
+          <Text style={styles.caption}>Dette er registrerte kildeopplysninger, ikke en samlet helsevurdering.</Text>
+        </View>
         <View style={styles.accordions}>
           <Accordion key={p.code + '-ingredients'} title="Ingredienser">
             <Text style={styles.caption}>{['no', 'nb'].includes(p.ingredientLanguage) ? 'Tekst registrert i norsk språkfelt.' : 'Tekst fra datakilden. Kan inneholde flere språk; ikke automatisk oversatt.'}</Text>
@@ -195,6 +210,13 @@ export default function ProductScreen() {
         <Text style={styles.body}>Gruppene beskriver ulike typer bearbeiding. NOVA 2 er matlagingsingredienser, ikke et eget trinn på en sunnhetsskala. Grå betyr at informasjon mangler.</Text>
         <SourceLink label="Kilde: Open Food Facts om NOVA" url="https://world.openfoodfacts.org/nova" />
       </>}
+      {topic === 'nutriscore' && <>
+        <Text style={styles.body}>{nutriScoreDescription(p?.nutriScore ?? null)}</Text>
+        <Text style={styles.body}>Nutri-Score bruker bokstavene A–E for å oppsummere ernæringsprofilen. NOVA grupperer mat etter bearbeidingsgrad. De er forskjellige vurderinger og kan gi ulike inntrykk av samme matvare.</Text>
+        <Text style={styles.caption}>Nutri-Score har fått en oppdatert beregningsmetode som tas i bruk gradvis. Matkontroll viser bare karakteren som er registrert i Open Food Facts. I Norge er Nøkkelhullet en egen nordisk merkeordning.</Text>
+        <SourceLink label="Om Nutri-Score (Santé publique France)" url={NUTRI_SCORE_SOURCE}/>
+        <SourceLink label="Om Nøkkelhullet (Helsedirektoratet)" url={NORWEGIAN_LABEL_SOURCE}/>
+      </>}
       {topic === 'nutrition' && <><Text style={styles.body}>Protein, fett og karbohydrat vises separat. Sukkerarter er en del av karbohydratene, ikke noe du skal legge til en gang til.</Text><Text style={styles.body}>Sukkerarter inkluderer naturlig forekommende sukker. Tallet forteller ikke alene hvor mye som er tilsatt. Sammenlign samme type vare og samme målegrunnlag.</Text><Text style={styles.caption}>Målegrunnlaget er ikke alltid entydig i API-et. Derfor viser vi ikke beregnede porsjoner eller automatiske rangeringer ennå.</Text></>}
       {topic === 'ingredients' && <><Text style={styles.body}>Dette er teksten datakilden har registrert, ikke en oppskrift vi har utledet. Vi rydder bare i tegnkoder og skjuler understreker brukt som formateringsmarkeringer. Ingen ingrediensnavn oversettes eller fjernes.</Text><Text style={styles.body}>Feilregistrerte lister kan inneholde flere språk eller næringsdeklarasjon. Vi kutter ikke bort innhold automatisk, siden viktige opplysninger kan gå tapt.</Text></>}
       {topic === 'additives' && <>
@@ -219,6 +241,12 @@ const styles = StyleSheet.create({
   body: { fontSize: 15, lineHeight: 23, color: colors.ink }, caption: { fontSize: 12, lineHeight: 19, color: colors.muted },
   novaCard: { borderWidth: 1, padding: 18, borderRadius: 18, gap: 9 }, spread: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
   novaCaption: { fontSize: 11, fontWeight: '800', letterSpacing: 0.8 }, novaTitle: { fontSize: 21, fontWeight: '800' },
+  nutriRow: { borderWidth:1,borderColor:colors.line,borderRadius:13,paddingHorizontal:14,paddingVertical:10,
+    minHeight:60,backgroundColor:'white',flexDirection:'row',alignItems:'center',gap:12 },
+  nutriHeading: {fontSize:14,fontWeight:'700',color:colors.ink},
+  nutriValue: {fontSize:16,fontWeight:'800',color:colors.green},
+  snapshot: {gap:6,padding:14,backgroundColor:'#EDF3ED',borderRadius:14},
+  snapshotHeading: {fontSize:16,fontWeight:'800',color:colors.ink},
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }, section: { fontSize: 18, fontWeight: '800', color: colors.ink },
   infoButton: { minHeight: 44, justifyContent: 'center', paddingVertical: 8 }, info: { fontSize: 13, fontWeight: '700', color: colors.green },
   macros: { flexDirection: 'row', gap: 9, flexWrap: 'wrap' }, macro: { flex: 1, minWidth: 85, padding: 12, gap: 7, backgroundColor: 'white', borderWidth: 1, borderColor: colors.line, borderRadius: 13 },

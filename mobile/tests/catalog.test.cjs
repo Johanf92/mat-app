@@ -7,7 +7,7 @@ const path = require('node:path');
 const os = require('node:os');
 const ts = require('typescript');
 const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'matkontroll-tests-'));
-for (const name of ['catalog', 'openFoodFacts']) {
+for (const name of ['catalog', 'nutriScore', 'openFoodFacts']) {
   const source = fs.readFileSync(path.join(__dirname, '../src', name + '.ts'), 'utf8');
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }, reportDiagnostics: true });
   assert.equal((compiled.diagnostics ?? []).filter(x => x.category === ts.DiagnosticCategory.Error).length, 0);
@@ -26,6 +26,7 @@ test('Norway is default; full-text search uses Search-a-licious with a country f
   assert.equal(u.searchParams.get('q'), 'gresk yoghurt countries_tags:"en:norway"');
   assert.equal(u.searchParams.get('langs'), 'no,en');
   assert.ok(u.searchParams.get('fields').includes('nutriments'));
+  assert.ok(u.searchParams.get('fields').includes('nutriscore_grade'));
 });
 test('country changes the filter; worldwide deliberately has no filter', () => {
   const es = MARKETS.find(m => m.code === 'es');
@@ -133,4 +134,22 @@ test('search normaliser works for language objects and brand arrays in search hi
  const product = normalize({ ...base, product_name: { no: 'Norsk navn', en: 'English name' }, brands: ['Merke A','Merke B'] });
  assert.equal(product.name, 'Norsk navn');
  assert.equal(product.brand, 'Merke A');
+});
+
+
+test('Nutri-Score parsing only accepts A-E and never infers grades from NOVA or nutrients',()=>{
+ const withGrade=normalize({...base,nova_group:4,nutriscore_grade:'b'});
+ assert.equal(withGrade.nutriScore,'b');
+ assert.equal(withGrade.nova,4);
+ assert.equal(normalize({...base,nutriscore_grade:' C '}).nutriScore,'c');
+ assert.equal(normalize({...base,nutrition_grades:'a'}).nutriScore,'a');
+ assert.equal(normalize({...base, nutrition_grade_fr:'d'}).nutriScore,'d');
+ for(const value of ['not-applicable','unknown','',null,undefined,0,5,'f','easier']){
+  assert.equal(normalize({...base,nutriscore_grade:value,nutrition_grades:value}).nutriScore,null);
+ }
+ assert.equal(normalize({...base,nutriscore_grade:'unknown',nutrition_grades:'b'}).nutriScore,null,
+  'newer explicit unknown cannot be overridden by old legacy score');
+ const u=new URL(buildProductUrl(base.code));
+ assert.ok(u.searchParams.get('fields').includes('nutriscore_grade'));
+ assert.ok(u.searchParams.get('fields').includes('nutrition_grades'));
 });

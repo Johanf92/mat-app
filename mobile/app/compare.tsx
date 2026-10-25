@@ -9,6 +9,7 @@ import { productProfile, candidateNote, relatedVariantComparisonNote } from '../
 import { additiveInfo, additiveSourceLabel, formatAdditiveCode, summarizeAdditives, type AdditiveInfo } from '../src/additives';
 import { displayIngredientText } from '../src/ingredientEvidence';
 import { productDataStatus } from '../src/productDataStatus';
+import { nutriScoreLabel } from '../src/nutriScore';
 import { colors, InfoSheet, NovaBadge, SourceLink } from '../src/ui';
 
 type DetailId = 'focus' | 'nutrition' | 'ingredients' | 'additives' | 'sources';
@@ -124,6 +125,7 @@ export default function Compare() {
         <Text style={s.columnCaption}>PRODUKT {index===0?'A':'B'}</Text>
         <Text numberOfLines={3} style={s.productName}>{p.name}</Text><Text numberOfLines={2} style={s.note}>{p.brand}</Text>
         <NovaBadge group={p.nova} compact/>
+        <Text style={s.note}>Nutri-Score: {nutriScoreLabel(p.nutriScore)}</Text>
        </View>)}
       </View>
       <Text style={s.note}>Opplysningene hentes på nytt fra produktdatabasen. Forslagslisten kan vise eldre verdier.</Text>

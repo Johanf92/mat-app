@@ -1,20 +1,21 @@
 import { DEFAULT_MARKET, numeric, readableText, type Market, type NovaGroup } from './catalog';
+import { parseNutriScore, type NutriScoreGrade } from './nutriScore';
 const BASE = 'https://world.openfoodfacts.org';
 const SEARCH_BASE = 'https://search.openfoodfacts.org';
 // Search-a-licious is a separate, Lucene-based search service. Its result shape
 // uses "hits", unlike the legacy CGI search and product lookup endpoints.
-const SEARCH_FIELDS = 'code,product_name,brands,countries_tags,categories_tags,nova_group,nutriments,ingredients_text,quantity';
+const SEARCH_FIELDS = 'code,product_name,brands,countries_tags,categories_tags,nova_group,nutriments,ingredients_text,quantity,nutriscore_grade,nutrition_grades';
 const FIELDS = [
   'code', 'product_name', 'product_name_no', 'product_name_nb', 'product_name_en',
   'brands', 'image_front_small_url', 'image_front_url', 'ingredients_text',
   'ingredients_text_no', 'ingredients_text_nb', 'ingredients_text_en', 'lang',
-  'nova_group', 'nutriments', 'additives_tags', 'allergens_tags', 'quantity',
+  'nova_group', 'nutriscore_grade', 'nutrition_grades', 'nutriments', 'additives_tags', 'allergens_tags', 'quantity',
   'countries_tags', 'categories_tags', 'last_modified_t',
 ].join(',');
 export type FoodProduct = {
   code: string; name: string; brand: string; image?: string; quantity?: string;
   ingredients?: string; ingredientsOriginal?: string; ingredientLanguage: string;
-  nova: NovaGroup | null; protein: number | null; sugar: number | null;
+  nova: NovaGroup | null; nutriScore: NutriScoreGrade | null; protein: number | null; sugar: number | null;
   fat: number | null; carbs: number | null; fiber: number | null; salt: number | null;
   energy: number | null; additives: string[]; allergens: string[];
   countries: string[]; categories: string[]; modifiedAt: number | null;
@@ -51,6 +52,9 @@ export function normalize(value: unknown): FoodProduct | null {
     ingredients: ingredientKey ? readableText(raw[ingredientKey]) : undefined,
     ingredientsOriginal: ingredientKey ? String(raw[ingredientKey]) : undefined, ingredientLanguage,
     nova: nova !== null && [1, 2, 3, 4].includes(nova) ? nova as NovaGroup : null,
+    // Prefer the current OFF field. An explicit "unknown"/"not-applicable"
+    // must not fall through to an obsolete legacy grade.
+    nutriScore: parseNutriScore(raw.nutriscore_grade ?? raw.nutrition_grades ?? raw.nutrition_grade_fr),
     protein: numeric(n.proteins_100g), sugar: numeric(n.sugars_100g), fat: numeric(n.fat_100g),
     carbs: numeric(n.carbohydrates_100g), fiber: numeric(n.fiber_100g), salt: numeric(n.salt_100g),
     energy: numeric(n['energy-kcal_100g']), additives: tags(raw.additives_tags), allergens: tags(raw.allergens_tags),

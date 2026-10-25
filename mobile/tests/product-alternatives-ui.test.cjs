@@ -47,6 +47,10 @@ function harness({ supported = true, find = async () => [], note = () => null, t
     '../../src/ingredientEvidence': { displayIngredientText: value => value || '', ingredientCodeNote: () => null },
     '../../src/ingredientTerms': { ingredientTerms: terms },
     '../../src/productDataStatus': { productDataStatus: () => ({headline:'Oppgitt i kilden: 7 av 7 næringsfelt.',notes:[]}) },
+    '../../src/nutriScore': {nutriScoreLabel: x => x ? String(x).toUpperCase() : 'Ikke oppgitt',
+      nutriScoreDescription: x => x ? 'Fra kilden: '+x : 'Ikke registrert',
+      NUTRI_SCORE_SOURCE:'https://example.org/nutriscore',NORWEGIAN_LABEL_SOURCE:'https://example.org/nokkelhullet'},
+    '../../src/productSnapshot': {productSnapshot:()=>['NOVA 3 fra kilden.','Sukkerarter: 3 g per 100 g / 100 ml.']},
     '../../src/alternatives': {
       comparableCategory: () => supported ? 'en:oat-drinks' : null,
       productProfile: () => supported ? { kind: 'oat-drink', label: 'havredrikker', category: 'en:oat-drinks' } : null,
@@ -226,4 +230,27 @@ test('product detail shows a clear placeholder after a failed remote photo',()=>
   assert.match(text(h.render()),/Kunne ikke laste bildet/);
   assert.equal(h.routes.length,0);
  } finally {product.image=before;}
+});
+
+
+test('Nutri-Score is optional and secondary to NOVA, with a separate explanation',()=>{
+ const h=harness(),all=nodes(h.render());
+ const nova=all.find(n=>n.type==='Pressable'&&String(n.props.accessibilityLabel||'').includes('Bearbeidingsgrad.'));
+ const score=byId(h.render(),'nutriscore-info');
+ assert.ok(nova);assert.ok(score);
+ assert.ok(all.indexOf(nova)<all.indexOf(score),'NOVA has primary visual placement');
+ assert.match(text(score),/Ikke oppgitt/);
+ score.props.onPress();
+ const sheet=nodes(h.render()).find(n=>n.type==='InfoSheet'&&n.props.title==='Hva betyr Nutri-Score?');
+ assert.ok(sheet);assert.equal(sheet.props.visible,true);
+ assert.match(text(sheet),/forskjellige vurderinger/);
+ assert.match(text(sheet),/Nøkkelhullet/);
+});
+test('product snapshot uses sourced facts and no invented health ranking',()=>{
+ const h=harness();
+ const box=byId(h.render(),'product-snapshot');
+ assert.ok(box);
+ assert.match(text(box),/Kort fortalt/);
+ assert.match(text(box),/NOVA/);
+ assert.doesNotMatch(text(box),/sunneste|dårligste|beste valg/);
 });
