@@ -116,7 +116,7 @@ export default function ProductScreen() {
               </Pressable>
               {alternativesLoading && <ActivityIndicator accessibilityLabel="Henter alternativer" color={colors.green} />}
               {!!alternativesError && <Text accessibilityRole="alert" style={styles.warning}>{alternativesError}</Text>}
-              {alternativesRequested && !alternativesLoading && !alternativesError && alternatives.length === 0 && <Text style={styles.caption}>Ingen relevante alternativer med tilstrekkelige data ble funnet.</Text>}
+              {alternativesRequested && !alternativesLoading && !alternativesError && alternatives.length === 0 && <Text style={styles.caption}>Ingen relevante alternativer funnet i søkeindeksen. Nyere produkter kan mangle – prøv å velge en vare selv.</Text>}
               {!alternativesLoading && !alternativesError && alternatives.map(other => <View key={other.code} style={styles.altRow}>
                 {other.image ? <Image source={{ uri: other.image }} style={styles.altImage} resizeMode="contain" /> : <View style={styles.altImage} />}
                 <View style={{ flex: 1, gap: 6 }}>
