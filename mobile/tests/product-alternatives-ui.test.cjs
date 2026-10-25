@@ -236,7 +236,7 @@ test('product detail shows a clear placeholder after a failed remote photo',()=>
 test('Nutri-Score is optional and secondary to NOVA, with a separate explanation',()=>{
  const h=harness(),all=nodes(h.render());
  const nova=all.find(n=>n.type==='Pressable'&&String(n.props.accessibilityLabel||'').includes('Bearbeidingsgrad.'));
- const score=byId(h.render(),'nutriscore-info');
+ const score=all.find(n=>n.props.testID==='nutriscore-info');
  assert.ok(nova);assert.ok(score);
  assert.ok(all.indexOf(nova)<all.indexOf(score),'NOVA has primary visual placement');
  assert.match(text(score),/Ikke oppgitt/);

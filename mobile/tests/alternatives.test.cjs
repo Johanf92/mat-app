@@ -294,3 +294,74 @@ test('new profiles search only in selected market with one controlled call',asyn
  }
  textResults=[];
 });
+
+
+test('wholegrain bread, white bread and rye crispbread are distinct use cases',()=>{
+ const source=next('8800000000001',{name:'Grovbrød Fullkorn',brand:'Bakst',ingredients:'Fullkornshvete, vann, rug'});
+ const whole=next('8800000000002',{name:'Grovbrød',brand:'Annet bakeri',ingredients:'Hvetemel, rug'});
+ const white=next('8800000000003',{name:'Loff',brand:'Annet bakeri',ingredients:'Hvetemel, vann'});
+ const rye=next('8800000000004',{name:'Rugknekkebrød',brand:'Annet bakeri',ingredients:'Rug, vann'});
+ const seed=next('8800000000005',{name:'Frøknekkebrød',brand:'Frø',ingredients:'Solsikkefrø'});
+ const oat=next('8800000000006',{name:'Havregryn',brand:'Tine',ingredients:'Havregryn'});
+ assert.equal(productProfile(source)?.kind,'bread-wholegrain');
+ assert.equal(productProfile(white)?.kind,'bread-white');
+ assert.equal(productProfile(rye)?.kind,'crispbread-rye');
+ assert.equal(productProfile(seed),null);
+ assert.deepEqual(relevantAlternatives(source,[whole,white,rye,seed,oat],market).map(x=>x.code),[whole.code]);
+ assert.match(relatedVariantComparisonNote(source,white),/ulikt|ulik/);
+});
+test('bread category never treats unlabelled loaf as verified gluten-free',()=>{
+ const plain=next('8800000000010',{name:'Grovbrød',brand:'A',ingredients:'Hvetemel'});
+ const glutenFree=next('8800000000011',{name:'Grovbrød glutenfri',brand:'B',ingredients:'Glutenfrie melblandinger'});
+ assert.equal(productProfile(glutenFree),null,'ambiguous gluten-free breads require manual comparison');
+ assert.deepEqual(relevantAlternatives(plain,[glutenFree],market),[]);
+});
+test('corn flakes are not chocolate cereals, cakes or baked oat snacks',()=>{
+ const src=next('8800000000020',{name:'Corn Flakes',brand:'Brand A',ingredients:'Mais, sukker'});
+ const valid=next('8800000000021',{name:'Cornflakes Original',brand:'Brand B',ingredients:'Mais, sukker'});
+ const honey=next('8800000000022',{name:'Honey Corn Flakes',brand:'Brand C',ingredients:'Mais, honning'});
+ const chocolate=next('8800000000023',{name:'Chocolate Cornflakes',brand:'Brand D',ingredients:'Mais, kakao'});
+ const muesli=next('8800000000024',{name:'Havregryn og nøtter',brand:'Brand E',ingredients:'Havre'});
+ assert.equal(productProfile(src)?.kind,'corn-flakes');
+ assert.deepEqual(relevantAlternatives(src,[valid,honey,chocolate,muesli],market).map(x=>x.code),[valid.code]);
+});
+test('strawberry jam excludes raspberry, mixed fruits and reduced-sugar recipes',()=>{
+ const src=next('8800000000030',{name:'Jordbærsyltetøy',brand:'First',ingredients:'Jordbær, sukker'});
+ const good=next('8800000000031',{name:'Strawberry Jam',brand:'Second',ingredients:'Strawberries, sugar'});
+ const raspberry=next('8800000000032',{name:'Bringebærsyltetøy',brand:'Third',ingredients:'Bringebær, sukker'});
+ const mix=next('8800000000033',{name:'Jordbær- og rabarbrasyltetøy',brand:'Fourth',ingredients:'Jordbær, rabarbra, sukker'});
+ const light=next('8800000000034',{name:'Jordbærsyltetøy uten tilsatt sukker',brand:'Fifth',ingredients:'Jordbær, søtstoff'});
+ assert.equal(productProfile(src)?.kind,'jam-strawberry');
+ assert.deepEqual(relevantAlternatives(src,[good,raspberry,mix,light],market).map(x=>x.code),[good.code]);
+});
+test('ready-made and powdered tomato soups are separate; generic name is ambiguous',()=>{
+ const ready=next('8800000000040',{name:'Tomatsuppe ferdig',brand:'First',ingredients:'Tomat, vann'});
+ const ready2=next('8800000000041',{name:'Tomatsuppe serveringsklar',brand:'Second',ingredients:'Tomat, vann'});
+ const powder=next('8800000000042',{name:'Tomatsuppe pulver',brand:'Third',ingredients:'Tomatpulver, salt'});
+ const unknown=next('8800000000043',{name:'Tomatsuppe',brand:'Fourth',ingredients:'Tomat, vann'});
+ assert.equal(productProfile(ready)?.kind,'tomato-soup-ready');
+ assert.equal(productProfile(powder)?.kind,'tomato-soup-powder');
+ assert.equal(productProfile(unknown),null);
+ assert.deepEqual(relevantAlternatives(ready,[ready2,powder,unknown],market).map(x=>x.code),[ready2.code]);
+ assert.match(relatedVariantComparisonNote(ready,powder),/målegrunnlag/);
+});
+test('new category searches use one country-filtered text search without re-ranking nutrition',async()=>{
+ const cases=[
+   ['Grovbrød', 'grovbrød'],
+   ['Loff', 'loff'],
+   ['Rugknekkebrød', 'knekkebrød rug'],
+   ['Corn Flakes','corn flakes'],
+   ['Jordbærsyltetøy','jordbærsyltetøy'],
+   ['Tomatsuppe ferdig','tomatsuppe ferdig'],
+ ];
+ for(const [name,expected] of cases){
+   const src=next('8800000000100',{name,brand:'Brand',countries:['en:norway']});
+   assert.ok(productProfile(src),name);
+   textResults=[];calls.length=0;
+   await findAlternatives(src,market);
+   assert.equal(calls.length,1);
+   assert.equal(calls[0].type,'text');
+   assert.equal(calls[0].args[0],expected);
+   assert.equal(calls[0].args[1],market);
+ }
+});

@@ -160,6 +160,6 @@ test('a failed remote comparison photo shows a visible fallback instead of blank
 
 test('comparison shows Nutri-Score as an independent source value, not a ranking',()=>{
  const h=harness(),whole=text(h.render());
- assert.match(whole,/Nutri-Score: Ikke oppgitt/);
+ assert.match(whole,/Nutri-Score:\s+Ikke oppgitt/);
  assert.doesNotMatch(whole,/best ernæringsprofil|sunnere vinner/);
 });

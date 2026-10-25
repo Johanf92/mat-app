@@ -146,3 +146,18 @@ test('common rice dessert additives have sourced, neutral Norwegian explanations
   assert.match(additiveSourceLabel(additiveInfo('E407').healthSource),/EFSA/);
   assert.equal(summarizeAdditives(['en:e472b','en:e407','en:e440']).items.length,3);
 });
+
+
+test('basic bread and cereal additives have neutral sourced names',()=>{
+ const expected={
+  E260:'Eddiksyre',E270:'Melkesyre',E300:'Askorbinsyre',E322:'Lecitiner',
+  E414:'Gummi arabicum',E450:'Difosfater',E471:'Mono- og diglyserider',
+  E500:'Natriumkarbonater',E503:'Ammoniumkarbonater'
+ };
+ for(const [code,name] of Object.entries(expected)){
+  const x=additiveInfo(code);
+  assert.match(x.name,new RegExp(name));
+  assert.match(x.source,/mattilsynet\.no/);
+  assert.doesNotMatch(x.description,/sunnere|farlig|ufarlig/i);
+ }
+});

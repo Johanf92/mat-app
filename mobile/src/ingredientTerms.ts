@@ -50,6 +50,24 @@ const catalogue: readonly { info: IngredientTermInfo; pattern: RegExp }[]=[
    }, pattern:/(^|[^a-zæøå])surhets[\s-]*regulerende\s+mid(?:del|ler)(?:et|ene)?(?=$|[^a-zæøå])/i
   },
   { info:{
+    id:'antioksidant',name:'Antioksidant',category:'Funksjon i matvaren',
+    description:'Antioksidanter brukes i noen matvarer for å redusere uønskede oksidasjonsprosesser, for eksempel forandringer i farge eller smak. Ordet viser til en funksjon, ikke til ett bestemt stoff eller helseeffekt.',
+    source:CATEGORY_SOURCE,
+   }, pattern:/(^|[^a-zæøå])antioksidant(?:er|ene)?(?=$|[^a-zæøå])/i
+  },
+  { info:{
+    id:'fargestoff',name:'Fargestoff',category:'Funksjon i matvaren',
+    description:'Fargestoffer brukes for å gi eller gjenopprette farge i matvarer. Betegnelsen omfatter mange ulike stoffer; ingredienslisten må undersøkes for å se hvilket stoff som er oppført.',
+    source:CATEGORY_SOURCE,
+   }, pattern:/(^|[^a-zæøå])fargestoff(?:er|ene)?(?=$|[^a-zæøå])/i
+  },
+  { info:{
+    id:'hevemiddel',name:'Hevemiddel',category:'Funksjon i matvaren',
+    description:'Hevemidler bidrar til at deig eller røre hever seg ved å utvikle gass. Betegnelsen forteller ikke alene hvilken forbindelse eller mengde som er brukt.',
+    source:CATEGORY_SOURCE,
+   }, pattern:/(^|[^a-zæøå])hevemid(?:del|ler)(?:et|ene)?(?=$|[^a-zæøå])/i
+  },
+  { info:{
     id:'sotstoff',name:'Søtstoff',category:'Funksjon i matvaren',
     description:'Søtstoffer brukes for å gi søtsmak og kan helt eller delvis erstatte sukker. Det finnes forskjellige søtstoffer med ulike egenskaper. Navnet «søtstoff» angir ikke hvilket stoff eller hvor mye som er brukt.',
     source:CATEGORY_SOURCE,

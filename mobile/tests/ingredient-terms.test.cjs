@@ -53,3 +53,11 @@ test('same source term is only explained once if repeated',()=>{
  const terms=ingredientTerms('Emulgator, emulgator (E472b), emulgator.');
  assert.deepEqual(terms.map(x=>x.id),['emulgator']);
 });
+
+
+test('common bakery function names are shown as functions, not invented E-numbers',()=>{
+ const items=ingredientTerms('Antioksidant, fargestoff, hevemiddel');
+ assert.deepEqual(items.map(x=>x.id),['antioksidant','fargestoff','hevemiddel']);
+ for(const item of items){assert.match(item.source,/mattilsynet\.no/);assert.match(item.category,/Funksjon/);}
+ assert.deepEqual(ingredientTerms('antioksidantisk, fargestoffaktig, hevemiddelaktig'),[]);
+});

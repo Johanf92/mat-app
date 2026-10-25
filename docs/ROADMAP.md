@@ -20,6 +20,8 @@
 - [x] Synlig oversikt over manglende næringsdata og interne motsetninger i kilden
 - [x] Nutri-Score som frivillig, separat og kildebasert ernæringsprofil ved siden av NOVA, uten lokal beregning
 - [x] Kort faktabasert oppsummering på produktsiden
+- [x] Forsiktig alternativmatching for grovbrød, loff, rugknekkebrød, cornflakes, jordbærsyltetøy og tydelig merket tomatsuppe
+- [x] Flere kildebelagte forklaringer for vanlige E-koder og funksjonsord fra bakevarer
 
 ## Prioriteres videre
 - [ ] Test og forbedre reelle treff for iKaffe, gresk yoghurt og flere norske produktkategorier

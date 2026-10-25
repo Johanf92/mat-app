@@ -10,7 +10,10 @@ export type ProductKind =
   | 'cola-regular' | 'cola-sugar-free' | 'kefir-plain'
   | 'skyr-plain' | 'cottage-cheese-plain'
   | 'oats-plain' | 'oats-gluten-free'
-  | 'milk-low-fat' | 'milk-whole';
+  | 'milk-low-fat' | 'milk-whole'
+  | 'bread-wholegrain' | 'bread-white' | 'crispbread-rye'
+  | 'corn-flakes' | 'jam-strawberry'
+  | 'tomato-soup-ready' | 'tomato-soup-powder';
 export type MatchProfile = {
   kind: ProductKind;
   label: string;
@@ -120,6 +123,69 @@ function milkProfile(p: FoodProduct): MatchProfile | null {
     : {kind,label:'helmelk',category:'en:whole-milks',fallback:'helmelk'};
 }
 
+/**
+ * More everyday categories, deliberately restricted to named types. Bread,
+ * toppings and ready meals are far too broad as automatic alternatives.
+ * These rules suggest use cases, not gluten, allergy or nutritional safety.
+ */
+function bakeryProfile(p:FoodProduct):MatchProfile|null {
+ const name=fold(p.name);
+ if(/knekkebrod|knackebrot|crispbread/.test(name)){
+   // Rye crackers are a different typical item from seed-, rice- or
+   // corn-based crispbreads. Skip ambiguous names.
+   if(!/\b(rug|rye)\b|rugknekkebrod|rye[\s-]*crispbread/.test(name)
+     || /fro|seed|ris|rice|mais|corn|kornfri|glutenfri|gluten[\s-]*free/.test(name))
+     return null;
+   return {kind:'crispbread-rye',label:'rugknekkebrød',category:'en:rye-crispbreads',fallback:'knekkebrød rug'};
+ }
+ // Only explicitly named bread types. Avoid baguettes, crispbread, buns,
+ // pizza bases and toast/sandwich preparations.
+ if(/baguette|rundstykke|bolle|bun|brioche|toastie|pizza|lefse|tortilla|wrap|lompe|knekkebrod|cracker|flatbrod|focaccia/.test(name))
+  return null;
+ if(/grovbrod|fullkornsbrod|whole[\s-]*(?:grain|meal)[\s-]*bread/.test(name)){
+  if(/frukt|fruit|rosin|raisin|med |with |smaksatt|glutenfri|gluten[\s-]*free|keto|proteinbrod/.test(name))return null;
+  return {kind:'bread-wholegrain',label:'grovbrød',category:'en:wholemeal-breads',fallback:'grovbrød'};
+ }
+ if(/(^|[^a-z])loff(?=$|[^a-z])|hveteloff|white[\s-]*bread/.test(name)){
+  if(/glutenfri|gluten[\s-]*free|med |with |surdeig|sourdough|soet|sweet|protein|frukt|fruit/.test(name))return null;
+  return {kind:'bread-white',label:'loff',category:'en:white-breads',fallback:'loff'};
+ }
+ return null;
+}
+function breakfastProfile(p:FoodProduct):MatchProfile|null {
+ const n=fold(p.name);
+ if(!/(^|[^a-z])(corn[\s-]*flakes|cornflakes|maisflak)(?=$|[^a-z])/.test(n))return null;
+ if(/honey|honning|sugar[\s-]*frost|frosties|sjokolade|chocolate|kakao|cocoa|jordbaer|strawberry|blanding|mix|bar|kake|cookie|kjeks|protein|med |with /.test(n))return null;
+ // Gluten-free is handled as a label distinction when comparing actual
+ // candidates; an unlabeled product is not declared gluten-containing.
+ return {kind:'corn-flakes',label:'cornflakes',category:'en:corn-flakes',fallback:'corn flakes'};
+}
+function spreadProfile(p:FoodProduct):MatchProfile|null {
+ const n=fold(p.name);
+ if(!/(syltetoy|jam|preserve|confiture)/.test(n))return null;
+ if(!/(jordbaer|strawberry)/.test(n))return null;
+ if(/bringebaer|raspberry|rabarbra|rhubarb|blabaer|blueberry|aprikos|apricot|mix|blanding|flere baer/.test(n))return null;
+ if(/lett|light|lite|redusert|reduced|uten[\s-]*tilsatt[\s-]*sukker|no[\s-]*added[\s-]*sugar|sukkerfri|sugar[\s-]*free|stevia|sotstoff/.test(n))return null;
+ // A clearly reduced-sugar or sweetened alternative should not be inferred
+ // as a regular jam merely because it says "strawberry".
+ const i=fold(p.ingredients??'');
+ if(/sotstoff|sweetener|stevia|sucralose|acesulfam|aspartam/.test(i))return null;
+ return {kind:'jam-strawberry',label:'jordbærsyltetøy',category:'en:strawberry-jams',fallback:'jordbærsyltetøy'};
+}
+function tomatoSoupProfile(p:FoodProduct):MatchProfile|null {
+ const n=fold(p.name);
+ if(!/(tomatsuppe|tomato[\s-]*soup)/.test(n))return null;
+ if(/med |with |mozzarella|pasta|nudler|noodles|kylling|chicken|chili|chilli|linser|lentil|basilikum|basil|spicy|pikant/.test(n))return null;
+ const powder=/\b(pulver|pose|suppepose|instant|dry[\s-]*mix|powder)\b/.test(n);
+ const ready=/\b(ferdig|ferdiglaget|serveringsklar|drikkeklar|ready[\s-]*to[\s-]*eat|ready[\s-]*made|kartong|kjoelt)\b/.test(n);
+ // Generic "Tomatsuppe" gives no evidence whether the reference values
+ // refer to dry powder, prepared soup or a ready-to-eat product.
+ if(powder===ready)return null;
+ return powder
+   ?{kind:'tomato-soup-powder',label:'tomatsuppepulver',category:'en:dehydrated-soups',fallback:'tomatsuppe pulver'}
+   :{kind:'tomato-soup-ready',label:'serveringsklar tomatsuppe',category:'en:tomato-soups',fallback:'tomatsuppe ferdig'};
+}
+
 function colaProfile(p: FoodProduct): MatchProfile | null {
   const name = fold(p.name);
   const category = fold(p.categories.join(' '));
@@ -168,7 +234,7 @@ export function productProfile(p: FoodProduct): MatchProfile | null {
   if (cola) return cola;
   const kefir = kefirProfile(p);
   if (kefir) return kefir;
-  for(const profile of [skyrProfile, cottageCheeseProfile, oatsProfile, milkProfile]){
+  for(const profile of [skyrProfile, cottageCheeseProfile, oatsProfile, milkProfile, bakeryProfile, breakfastProfile, spreadProfile, tomatoSoupProfile]){
     const match=profile(p);
     if(match)return match;
   }
@@ -216,6 +282,10 @@ export function relatedVariantComparisonNote(a: FoodProduct, b: FoodProduct): st
     return 'Begge er melk, men den ene er lettmelk og den andre helmelk. Sammenlign gjerne fettinnhold og energi; dette er ulike varianter.';
   if ((left === 'oats-plain' && right === 'oats-gluten-free') || (left === 'oats-gluten-free' && right === 'oats-plain'))
     return 'Begge er havregryn, men bare én variant er registrert som glutenfri. Dette er ikke dokumentasjon på at den andre er egnet ved cøliaki. Kontroller emballasjen.';
+  if ((left === 'bread-wholegrain' && right === 'bread-white') || (left === 'bread-white' && right === 'bread-wholegrain'))
+    return 'Begge er brød, men grovbrød og loff har ulik kornprofil. Sammenlign gjerne fiber, ingredienser og salt, ikke bare NOVA.';
+  if ((left === 'tomato-soup-powder' && right === 'tomato-soup-ready') || (left === 'tomato-soup-ready' && right === 'tomato-soup-powder'))
+    return 'Begge er tomatsuppe, men én variant er pulver og den andre serveringsklar. Næring per 100 g kan derfor ha helt forskjellig målegrunnlag.';
   return null;
 }
 /** Only a label claim, not a test of lactose content or milk allergen safety. */
@@ -253,7 +323,10 @@ function variantKey(p: FoodProduct, kind: ProductKind): string {
   }
   if (kind === 'greek-plain' || kind === 'plain-yogurt' || kind === 'kefir-plain'
     || kind === 'skyr-plain' || kind === 'cottage-cheese-plain'
-    || kind === 'milk-low-fat' || kind === 'milk-whole') {
+    || kind === 'milk-low-fat' || kind === 'milk-whole'
+    || kind === 'bread-wholegrain' || kind === 'bread-white'
+    || kind === 'crispbread-rye' || kind === 'corn-flakes' || kind === 'jam-strawberry'
+    || kind === 'tomato-soup-powder' || kind === 'tomato-soup-ready') {
     const metrics = [p.energy, p.protein, p.fat, p.carbs, p.sugar];
     if (metrics.filter(v => v !== null).length < 3) return identity(p);
     return kind + '|' + brand + '|' + (labeledLactoseFree(p) ? 'lactose-free' : 'unspecified')
@@ -295,6 +368,9 @@ export function relevantAlternatives(source: FoodProduct, options: FoodProduct[]
     // substitution for milk explicitly labelled lactose-free.
     && (!['milk-low-fat','milk-whole'].includes(profile.kind)
       || labeledLactoseFree(source)===labeledLactoseFree(p))
+    // "Glutenfri" is a stated label, not a medically verified status.
+    && (!['bread-wholegrain','bread-white','crispbread-rye','corn-flakes'].includes(profile.kind)
+      || labeledGlutenFree(source)===labeledGlutenFree(p))
   ).sort((a, b) =>
     exactLabelMatch(b, profile.kind) - exactLabelMatch(a, profile.kind)
     || quality(b) - quality(a) || a.name.localeCompare(b.name, 'nb')
@@ -327,6 +403,9 @@ export function candidateNote(source: FoodProduct, candidate: FoodProduct): stri
     && Math.abs(source.carbs - candidate.carbs) >= 7) {
     return 'Stor forskjell i karbohydrater. Kontroller variant og næringsverdier.';
   }
+  if(a.kind.startsWith('tomato-soup') && source.energy!==null && candidate.energy!==null
+    && Math.abs(source.energy-candidate.energy)>200)
+    return 'Stor forskjell i energi kan skyldes at den ene registreringen gjelder pulver og den andre ferdig suppe. Kontroller målegrunnlaget.';
   // Missing ingredient data in a search hit is common; explain that once in the
   // results footer rather than clutter every candidate card.
   return null;
