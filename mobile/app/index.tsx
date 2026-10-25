@@ -54,9 +54,9 @@ export default function Home() {
         </Pressable>
       </View>
       <Text style={styles.caption}>{submitted?.barcode ? 'Strekkodeoppslag i alle land.' : market.tag ? 'Søker i produkter registrert for ' + market.name + '.' : 'Søker i produkter fra alle land.'}</Text>
-      {!submitted && <View style={styles.camera} accessibilityLabel="Kameraskanning er ikke aktivert ennå. Skriv strekkoden i søkefeltet.">
-        <Text style={styles.cameraTitle}>Skann strekkode</Text><Text style={styles.caption}>Kommer i neste steg. Du kan skrive strekkoden i søket nå.</Text>
-      </View>}
+      {!submitted && <Pressable accessibilityRole="button" onPress={() => router.push('/scanner')} style={styles.camera}>
+        <Text style={styles.cameraTitle}>▣  Skann strekkode med kamera</Text><Text style={styles.caption}>Hold kameraet foran strekkoden. Vi finner produktet automatisk.</Text>
+      </Pressable>}
       {loading && <View style={styles.loading}><ActivityIndicator color={colors.green} /><Text style={styles.caption}>Henter produkter…</Text></View>}
       {!!error && <Text accessibilityRole="alert" style={styles.message}>{error}</Text>}
       {submitted && !loading && !error && <>
@@ -82,8 +82,8 @@ const styles = StyleSheet.create({
   searchBox: { gap: 10 }, input: { borderWidth: 1, borderColor: colors.line, backgroundColor: 'white', padding: 17, borderRadius: 15, fontSize: 16, color: colors.ink },
   searchButton: { minHeight: 50, backgroundColor: colors.green, borderRadius: 13, padding: 15, alignItems: 'center' },
   disabled: { opacity: 0.5 }, buttonText: { color: 'white', fontSize: 17, fontWeight: '700' },
-  caption: { fontSize: 12, lineHeight: 19, color: colors.muted }, camera: { borderWidth: 1, borderStyle: 'dashed', borderColor: '#ACBDAF', padding: 18, borderRadius: 17, gap: 7 },
-  cameraTitle: { fontSize: 17, fontWeight: '700', color: colors.muted }, loading: { paddingVertical: 20, gap: 10, alignItems: 'center' },
+  caption: { fontSize: 12, lineHeight: 19, color: colors.muted }, camera: { borderWidth: 1, borderColor: '#246C4C', backgroundColor: '#E5F0E7', padding: 18, borderRadius: 17, gap: 7 },
+  cameraTitle: { fontSize: 17, fontWeight: '700', color: colors.green }, loading: { paddingVertical: 20, gap: 10, alignItems: 'center' },
   message: { padding: 16, borderRadius: 13, backgroundColor: '#FFF0DD', color: '#724300', lineHeight: 23 }, section: { fontSize: 19, fontWeight: '800', color: colors.ink },
   product: { flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: 'white', borderWidth: 1, borderColor: colors.line, padding: 13, borderRadius: 17 },
   thumb: { width: 57, height: 75, borderRadius: 9, backgroundColor: '#EDF2ED' }, productInfo: { flex: 1, gap: 6 },
