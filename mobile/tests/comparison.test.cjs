@@ -26,7 +26,7 @@ const comparisonModule=loadTs('comparison',{
  './additives':additiveModule
 });
 const {comparisonInsight,metricAmount,METRICS,COMPARE_OPTIONS,comparisonDataWarnings,keyDifferences,
- additiveEvidenceRows,additiveEvidenceLabel,additiveDifferenceSummary}=comparisonModule;
+ additiveEvidenceRows,additiveEvidenceLabel,additiveDifferenceSummary,quickComparisonFacts}=comparisonModule;
 const a={name:'Naturell yoghurt A',nova:1,ingredients:'Melk, kultur',protein:10,sugar:4,fat:3,carbs:5,energy:90,salt:0.1,fiber:0,additives:[]};
 const b={...a,name:'Naturell yoghurt B',nova:4,protein:8,carbs:12,sugar:11,ingredients:'Melk, sukker, kultur',energy:110};
 
@@ -146,4 +146,35 @@ test('code normalization ignores case but does not collapse parent and variant w
  assert.deepEqual(rows.map(x=>x.code),['E340','E340II','E150D']);
  const caramel=rows.find(x=>x.code==='E150D');
  assert.equal(caramel.differs,false);
+});
+
+
+test('quick overview prioritizes registered sugar, ingredient-backed E211 and NOVA',()=>{
+ const cola={...a,name:'Coca-Cola Original Taste',nova:4,sugar:10.6,carbs:10.6,ingredients:'Kullsyreholdig vann, sukker, E150d, E338',additives:['en:e150d','en:e338']};
+ const grans={...b,name:'Grans Cola',nova:4,sugar:10.6,carbs:10.6,ingredients:'Vann, sukker, kullsyre, E338, E150d, E211',additives:['en:e211','en:e290','en:e338']};
+ const facts=quickComparisonFacts(cola,grans);
+ assert.deepEqual(facts.map(x=>x.key),['sugar','additive-E211','nova']);
+ assert.match(facts[0].summary,/10,6 g/);
+ assert.match(facts[1].summary,/Oppført for B/);
+ assert.match(facts[1].detail,/Natriumbenzoat|Konserveringsmiddel/);
+ assert.match(facts[1].detail,/ikke bevis|ikke.*fravær|ikke.*fraværende|dokumenterer ikke/);
+ assert.match(facts[2].summary,/NOVA 4/);
+ assert.doesNotMatch(facts.map(x=>x.summary).join(' '),/sunnere|best|verre/);
+});
+
+test('quick overview handles missing fields without assigning zero or claiming absence',()=>{
+ const missing={...a,sugar:null,nova:null,ingredients:undefined,additives:[]};
+ const registered={...b,sugar:null,nova:4,ingredients:undefined,additives:[]};
+ const facts=quickComparisonFacts(missing,registered);
+ assert.ok(facts.find(x=>x.key==='nova-unknown'));
+ assert.ok(facts.find(x=>x.key==='missing-ingredients'));
+ assert.doesNotMatch(facts.map(x=>x.summary).join(' '),/0 g/);
+ assert.ok(facts.length<=3);
+});
+
+test('quick overview does not turn E290 field-only difference into a meaningful product difference',()=>{
+ const first={...a,sugar:4,nova:4,additives:[],ingredients:'Kullsyre, sukker'};
+ const second={...b,sugar:4,nova:4,additives:['en:e290'],ingredients:'Kullsyre, sukker'};
+ const facts=quickComparisonFacts(first,second);
+ assert.ok(!facts.some(x=>x.key.includes('E290')));
 });
