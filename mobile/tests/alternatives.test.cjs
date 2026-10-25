@@ -206,3 +206,23 @@ test('original and zero cola are related variants for manual comparison, never i
   assert.equal(relatedVariantComparisonNote(original,{...original,code:'1111111122202',brand:'Other Cola'}),null);
   assert.equal(relatedVariantComparisonNote(base,zero),null);
 });
+
+test('TINE naturell kefir has a conservative same-type alternatives search', async () => {
+  const source=next('1111111100701',{name:'Kefir',brand:'TINE',ingredients:'Melk, kefirkultur',categories:[]});
+  const similar=next('1111111100702',{name:'Kefir naturell',brand:'Meieriet',ingredients:'Melk, kefirkultur',categories:['en:kefirs']});
+  const mango=next('1111111100703',{name:'Kefir mango',brand:'Meieriet',ingredients:'Melk, mango',categories:['en:kefirs']});
+  const water=next('1111111100704',{name:'Water Kefir',brand:'Fermented',ingredients:'Vann, sukker',categories:['en:kefirs']});
+  const flavoured=next('1111111100705',{name:'Kefir',brand:'Sweet',ingredients:'Melk, sukker, smakstilsetning',categories:['en:kefirs']});
+  const foreign=next('1111111100706',{name:'Kefir',brand:'Foreign',countries:['en:sweden'],ingredients:'Milk, kefir cultures'});
+  assert.equal(productProfile(source)?.kind,'kefir-plain');
+  assert.equal(comparableCategory(source),'en:kefirs');
+  assert.equal(productProfile(mango),null);
+  assert.equal(productProfile(water),null);
+  assert.equal(productProfile(flavoured),null);
+  assert.deepEqual(relevantAlternatives(source,[similar,mango,water,flavoured,foreign],market).map(x=>x.code),[similar.code]);
+  calls.length=0;textResults=[similar,mango,water,flavoured,foreign];
+  const found=await findAlternatives(source,market);
+  assert.deepEqual(found.map(x=>x.code),[similar.code]);
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].args[0],'kefir');
+});
