@@ -10,6 +10,7 @@ import { ADDITIVE_GENERAL_SOURCE, additiveSourceLabel, formatAdditiveCode, summa
 import { ingredientTerms, type IngredientTermInfo } from '../../src/ingredientTerms';
 import { comparableCategory, findAlternatives, productProfile, candidateNote, fallbackProductIcon } from '../../src/alternatives';
 import { displayIngredientText, ingredientCodeNote } from '../../src/ingredientEvidence';
+import { productAdditiveEvidence, additiveEvidenceLabel } from '../../src/productEvidence';
 import { productDataStatus } from '../../src/productDataStatus';
 import { formatAllergenTags } from '../../src/allergens';
 import { nutriScoreDescription, nutriScoreLabel, NUTRI_SCORE_SOURCE, NORWEGIAN_LABEL_SOURCE } from '../../src/nutriScore';
@@ -63,7 +64,7 @@ export default function ProductScreen() {
   const nova = novaInfo(p?.nova ?? null);
   const alternativesSupported = p !== null && comparableCategory(p) !== null;
   // The heading, cards and raw-data disclosure share the same presentation model.
-  const additives = summarizeAdditives(p?.additives ?? []);
+  const additives = productAdditiveEvidence(p ?? {ingredients:undefined,additives:[]});
   const titles: Record<Exclude<Topic, null>, string> = { nova: 'Hva betyr NOVA?', nutriscore:'Hva betyr Nutri-Score?', ingredients: 'Om ingredienslisten', nutrition: 'Slik leser du næringsinnhold', additives: 'Om tilsetningsstoffer' };
   return <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
     <View style={styles.toolbar}><Pressable accessibilityRole="button" onPress={() => router.canGoBack() ? router.back() : router.replace('/')} style={styles.backButton}><Text style={styles.back}>← Tilbake til søk</Text></Pressable></View>
@@ -99,7 +100,7 @@ export default function ProductScreen() {
         {[p.protein, p.fat, p.carbs].some(x => x === null) && <Text style={styles.caption}>— betyr at opplysningen mangler, ikke at mengden er null.</Text>}
         <View testID="product-snapshot" style={styles.snapshot}>
           <Text style={styles.snapshotHeading}>Kort fortalt</Text>
-          {productSnapshot(p,additives.items.length).map((fact,index)=><Text key={index} style={styles.body}>{fact}</Text>)}
+          {productSnapshot(p,additives.items.length,additives.unrecognized.length).map((fact,index)=><Text key={index} style={styles.body}>{fact}</Text>)}
           <Text style={styles.caption}>Dette er registrerte kildeopplysninger, ikke en samlet helsevurdering.</Text>
         </View>
         <View style={styles.accordions}>
@@ -115,16 +116,19 @@ export default function ProductScreen() {
             {([['Energi', p.energy, 'kcal'], ['Protein', p.protein, 'g'], ['Fett', p.fat, 'g'], ['Karbohydrat', p.carbs, 'g'], ['Hvorav sukkerarter', p.sugar, 'g'], ['Fiber', p.fiber, 'g'], ['Salt', p.salt, 'g']] as const).map(([label, value, unit]) => <View key={label} style={styles.nutrientRow}><Text style={styles.body}>{label}</Text><Text style={styles.nutrientValue}>{amount(value, unit)}</Text></View>)}
           </Accordion>
           <Accordion key={p.code + '-additives'} title={additives.title}>
-            {additives.rawTags.length === 0 && <Text testID="missing-e-codes" style={styles.body}>Ingen E-numre registrert i Open Food Facts sitt E-kodefelt. Se også ingredienslisten og kontroller emballasjen. Manglende registrering betyr ikke at varen er fri for tilsetningsstoffer.</Text>}
+            {additives.items.length === 0 && additives.unrecognized.length===0 && <Text testID="missing-e-codes" style={styles.body}>Ingen eksplisitte E-numre registrert i ingredienslisten eller Open Food Facts sitt E-kodefelt. Kontroller emballasjen. Manglende oppføring betyr ikke at varen er fri for tilsetningsstoffer.</Text>}
             {!!additives.groupingNote && <Text style={styles.caption}>{additives.groupingNote}</Text>}
-            {additives.items.map(a => <Pressable key={a.id} accessibilityRole="button" accessibilityLabel={'Les om ' + formatAdditiveCode(a.id) + ', ' + a.name} onPress={() => setSelectedAdditive(a)} style={styles.additiveRow}>
-              <View style={{ flex: 1, gap: 3 }}><Text style={styles.additiveName}>{formatAdditiveCode(a.id)} · {a.name}</Text><Text style={styles.caption}>{a.role}</Text></View><Text style={styles.arrow}>ⓘ</Text>
+            {additives.items.map(a => <Pressable key={a.code} testID={'product-additive-'+a.code} accessibilityRole="button" accessibilityLabel={'Les om ' + formatAdditiveCode(a.code) + ', ' + a.info.name} onPress={() => setSelectedAdditive(a.info)} style={styles.additiveRow}>
+              <View style={{ flex: 1, gap: 3 }}><Text style={styles.additiveName}>{formatAdditiveCode(a.code)} · {a.info.name}</Text>
+                <Text style={styles.caption}>{a.info.role}</Text>
+                <Text style={styles.caption}>{additiveEvidenceLabel(a.evidence)}</Text>
+              </View><Text style={styles.arrow}>ⓘ</Text>
             </Pressable>)}
             {additives.unrecognized.map(raw => <View key={raw} style={styles.additiveRow}>
               <View style={{ flex: 1, gap: 3 }}><Text style={styles.additiveName}>{raw}</Text><Text style={styles.caption}>Ukjent kodeformat fra datakilden. Oppføringen er beholdt, men ikke tolket.</Text></View>
             </View>)}
             {!!ingredientCodeNote(p.ingredients,p.additives) && <Text style={styles.warning}>{ingredientCodeNote(p.ingredients,p.additives)}</Text>}
-            <Text style={styles.caption}>Koder nevnt i ingrediensteksten telles ikke automatisk som registrerte E-stoffer. Originalkodene er tilgjengelige under «Kilde og datakvalitet».</Text>
+            <Text style={styles.caption}>Bare eksplisitt oppførte E-numre telles, fra ingredienslisten og/eller E-kodefeltet. Det er ikke en fullstendig kartlegging av innholdet. Originalkodene er tilgjengelige under «Kilde og datakvalitet».</Text>
             <Pressable accessibilityRole="button" onPress={() => setTopic('additives')} style={styles.infoButton}><Text style={styles.info}>Hva betyr E-numrene? ⓘ</Text></Pressable>
           </Accordion>
           <Accordion key={p.code + '-allergens'} title="Allergenopplysninger">

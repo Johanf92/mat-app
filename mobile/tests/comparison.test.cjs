@@ -20,9 +20,13 @@ function loadTs(name, mocks={}) {
 }
 const additiveModule=loadTs('additives');
 const ingredientModule=loadTs('ingredientEvidence',{'./additives':additiveModule});
+const productEvidenceModule=loadTs('productEvidence',{'./additives':additiveModule,'./ingredientEvidence':ingredientModule});
+const ingredientComparisonModule=loadTs('ingredientComparison',{'./ingredientEvidence':ingredientModule});
 const comparisonModule=loadTs('comparison',{
  './catalog':{amount:(n,unit='g')=>n===null?'Ikke oppgitt':n.toLocaleString('nb-NO',{maximumFractionDigits:2})+' '+unit},
  './ingredientEvidence':ingredientModule,
+ './ingredientComparison':ingredientComparisonModule,
+ './productEvidence':productEvidenceModule,
  './additives':additiveModule
 });
 const {comparisonInsight,metricAmount,METRICS,COMPARE_OPTIONS,comparisonDataWarnings,keyDifferences,
@@ -212,4 +216,39 @@ test('missing nutrient values never become claimed differences in headline',()=>
  const second={...b,energy:46,fat:2,protein:3.4,sugar:3.6};
  const facts=quickComparisonFacts(first,second);
  assert.ok(!facts.some(f=>['energy','fat','protein','sugar'].includes(f.key)));
+});
+
+
+test('ingredient focus explicitly contrasts source-listed sugar and sweetener without declaring absence',()=>{
+ const sugared={...a,ingredients:'Kullsyreholdig vann, sukker, farge (E150d)'};
+ const noSugar={...b,ingredients:'Vann, søtstoffer (aspartam, acesulfam K), farge (E150d)'};
+ const message=comparisonInsight(sugared,noSugar,'ingredients');
+ assert.match(message,/A: sukker/);
+ assert.match(message,/B: søtstoff/);
+ assert.match(message,/bekrefter ikke at stoffet er fraværende/);
+ assert.doesNotMatch(message,/mindre sunn|sunnere/);
+});
+test('language synonyms and sugar-free labels do not create false ingredient differences',()=>{
+ const m=ingredientComparisonModule.ingredientMentionDifferences(
+  {ingredients:'Sukker, salt, melk'},{ingredients:'Sugar, salt, milk'});
+ assert.deepEqual(m,[]);
+ const n=ingredientComparisonModule.ingredientMentionDifferences(
+  {ingredients:'Sukkerfri aroma'},{ingredients:'Naturlig aroma'});
+ assert.deepEqual(n,[]);
+ assert.deepEqual(ingredientComparisonModule.ingredientMentionDifferences(
+  {ingredients:undefined},{ingredients:'Sukker'}),[]);
+});
+test('product and comparison use the same reconciled E-code evidence',()=>{
+ const first={...a,ingredients:'Vann, sukker, E472e',additives:['en:e170']};
+ const second={...b,ingredients:'Vann, sukker, E170',additives:['en:e170']};
+ const one=productEvidenceModule.productAdditiveEvidence(first);
+ assert.deepEqual(one.items.map(x=>x.code),['E170','E472E']);
+ assert.deepEqual(one.items.map(x=>x.evidence),['field','ingredients']);
+ assert.equal(one.ingredientOnlyCodes[0],'E472E');
+ assert.deepEqual(one.rawTags,['en:e170']);
+ const rows=additiveEvidenceRows(first,second);
+ assert.equal(rows.find(x=>x.code==='E170').aEvidence,'field');
+ assert.equal(rows.find(x=>x.code==='E170').bEvidence,'both');
+ assert.equal(rows.find(x=>x.code==='E472E').aEvidence,'ingredients');
+ assert.equal(rows.find(x=>x.code==='E472E').bEvidence,'not-recorded');
 });

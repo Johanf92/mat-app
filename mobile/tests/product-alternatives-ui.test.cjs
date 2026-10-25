@@ -45,6 +45,14 @@ function harness({ supported = true, find = async () => [], note = () => null, t
     '../../src/ui': { colors: {}, InfoSheet: 'InfoSheet', SourceLink: 'SourceLink', NovaBadge: 'NovaBadge' },
     '../../src/additives': { ADDITIVE_GENERAL_SOURCE: '', additiveSourceLabel: () => 'Kilde: Mattilsynet', formatAdditiveCode: x => x, summarizeAdditives: () => ({ title: 'Tilsetningsstoffer', rawTags: [], items: [], unrecognized: [] }) },
     '../../src/ingredientEvidence': { displayIngredientText: value => value || '', ingredientCodeNote: () => null },
+    '../../src/productEvidence': {
+      productAdditiveEvidence: p => ({
+        title:'Tilsetningsstoffer'+(p.ingredients?.includes('E472e')?' · 1 oppføring':''),
+        items:p.ingredients?.includes('E472e')?[{code:'E472E',info:{id:'E472E',name:'Diacetylvinsyreestere',role:'Emulgator'},evidence:'ingredients'}]:[],
+        unrecognized:[],rawTags:p.additives||[],groupingNote:null,ingredientOnlyCodes:[]
+      }),
+      additiveEvidenceLabel:s=>s==='ingredients'?'Kun nevnt i ingredienslisten':'Kun registrert i E-kodefeltet'
+    },
     '../../src/ingredientTerms': { ingredientTerms: terms },
     '../../src/allergens': { formatAllergenTags: tags => tags.includes('en:milk') ? ['Melk'] : tags },
     '../../src/productDataStatus': { productDataStatus: () => ({headline:'Oppgitt i kilden: 7 av 7 næringsfelt.',notes:[]}) },
@@ -282,4 +290,20 @@ test('empty separate E-code field does not assert the product is additive-free',
  assert.match(txt,/Ingen E-numre registrert/);
  assert.match(txt,/E-kodefelt/);
  assert.match(txt,/ikke at varen er fri/);
+});
+
+
+test('product page shows E-code explicitly mentioned in ingredients even with no separate E field',()=>{
+ const old=product.ingredients;
+ const tags=product.additives;
+ try{
+  product.ingredients='Vann, E472e';
+  product.additives=[];
+  const h=harness(),tree=h.render();
+  const item=byId(tree,'product-additive-E472E');
+  assert.ok(item);
+  assert.match(text(item),/Diacetylvinsyreestere/);
+  assert.match(text(item),/Kun nevnt i ingredienslisten/);
+  assert.equal(byId(tree,'missing-e-codes'),undefined);
+ }finally{product.ingredients=old;product.additives=tags;}
 });

@@ -8,6 +8,7 @@ import { type CompareFocus, COMPARE_OPTIONS, METRICS, comparisonInsight, metricA
 import { productProfile, candidateNote, relatedVariantComparisonNote } from '../src/alternatives';
 import { additiveInfo, additiveSourceLabel, formatAdditiveCode, summarizeAdditives, type AdditiveInfo } from '../src/additives';
 import { displayIngredientText } from '../src/ingredientEvidence';
+import { ingredientMentionDifferences, ingredientComparisonInsight } from '../src/ingredientComparison';
 import { productDataStatus } from '../src/productDataStatus';
 import { nutriScoreLabel } from '../src/nutriScore';
 import { colors, InfoSheet, NovaBadge, SourceLink } from '../src/ui';
@@ -193,6 +194,13 @@ export default function Compare() {
           </View>)}
         </DetailSection>
         <DetailSection id="ingredients" title="Ingredienslister" open={detailOpen==='ingredients'} onToggle={()=>toggleDetail('ingredients')}>
+          {ingredientMentionDifferences(left,right).length>0 && <View testID="explicit-ingredient-differences" style={s.ingredients}>
+            <Text style={s.resultName}>Eksplisitt nevnte ingrediensord</Text>
+            {ingredientMentionDifferences(left,right).map(item=><Text key={item.key} style={s.body}>
+              {item.label}: nevnt i tekst for {item.side}, ikke eksplisitt nevnt i den andre listen.
+            </Text>)}
+            <Text style={s.note}>Dette er ikke bevis på at stoffet mangler i den andre varen.</Text>
+          </View>}
           {([['A',left],['B',right]] as const).map(([letter,p])=><View key={p.code+'ingredients'} style={s.ingredients}>
             <Text style={s.resultName}>Produkt {letter} · {p.name}</Text>
             <Text style={s.body} numberOfLines={showIngredients?undefined:5}>

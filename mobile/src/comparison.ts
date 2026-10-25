@@ -1,6 +1,8 @@
 import { type FoodProduct } from './openFoodFacts';
 import { amount } from './catalog';
 import { ingredientCodeEvidence, displayIngredientText } from './ingredientEvidence';
+import { ingredientComparisonInsight } from './ingredientComparison';
+import { productAdditiveEvidence, additiveEvidenceLabel, type AdditiveEvidenceState } from './productEvidence';
 import { additiveInfo, formatAdditiveCode, normalizeAdditive } from './additives';
 
 export type CompareFocus = 'processing' | 'ingredients' | 'protein' | 'sugar';
@@ -27,7 +29,6 @@ export const METRICS: { key: MetricKey; label: string; unit: string }[] = [
  * mentioned explicitly in the ingredient text, or both. None of these
  * observations proves absence from a product with no matching entry.
  */
-export type AdditiveEvidenceState = 'both' | 'ingredients' | 'field' | 'not-recorded';
 export type ComparedAdditive = {
   code: string;
   displayCode: string;
@@ -37,49 +38,29 @@ export type ComparedAdditive = {
   bEvidence: AdditiveEvidenceState;
   differs: boolean;
 };
-function normalizedTagSet(tags: readonly string[]): Set<string> {
-  return new Set(tags.map(normalizeAdditive).filter((code): code is string => code !== null));
-}
-function statusForCode(code: string, fromIngredients: Set<string>, fromField: Set<string>): AdditiveEvidenceState {
-  const inIngredients = fromIngredients.has(code);
-  const inField = fromField.has(code);
-  return inIngredients && inField ? 'both' : inIngredients ? 'ingredients' : inField ? 'field' : 'not-recorded';
-}
+/** Reuses the same reconciled per-product E-code evidence as the detail page. */
 export function additiveEvidenceRows(a: FoodProduct, b: FoodProduct): ComparedAdditive[] {
-  const aText = new Set(ingredientCodeEvidence(a.ingredients, a.additives).mentioned);
-  const bText = new Set(ingredientCodeEvidence(b.ingredients, b.additives).mentioned);
-  const aField = normalizedTagSet(a.additives);
-  const bField = normalizedTagSet(b.additives);
-  const codes = new Set([...aText, ...bText, ...aField, ...bField]);
-  const results = [...codes].map(code => {
-    const info = additiveInfo(code);
-    const aEvidence = statusForCode(code, aText, aField);
-    const bEvidence = statusForCode(code, bText, bField);
+  const left=productAdditiveEvidence(a).items;
+  const right=productAdditiveEvidence(b).items;
+  const aCodes=new Map(left.map(row=>[row.code,row]));
+  const bCodes=new Map(right.map(row=>[row.code,row]));
+  const codes=new Set([...aCodes.keys(),...bCodes.keys()]);
+  const rows=[...codes].map(code=>{
+    const info=aCodes.get(code)?.info??bCodes.get(code)?.info??additiveInfo(code)!;
+    const aEvidence=aCodes.get(code)?.evidence??'not-recorded';
+    const bEvidence=bCodes.get(code)?.evidence??'not-recorded';
     return {
-      code, displayCode: formatAdditiveCode(code),
-      name: info?.name ?? 'Forklaring mangler',
-      role: info?.role ?? 'Funksjon ikke avklart',
-      aEvidence, bEvidence, differs: aEvidence !== bEvidence,
+      code,displayCode:formatAdditiveCode(code),name:info.name,role:info.role,
+      aEvidence,bEvidence,differs:aEvidence!==bEvidence,
     };
   });
-  // First show codes documented on only one side, then differences in source
-  // completeness, then codes documented on both sides in the same way.
-  const priority = (row: ComparedAdditive): number => {
-    const aListed = row.aEvidence !== 'not-recorded';
-    const bListed = row.bEvidence !== 'not-recorded';
-    return aListed !== bListed ? 0 : row.differs ? 1 : 2;
+  const priority=(row:ComparedAdditive)=>{
+    const a=row.aEvidence!=='not-recorded',b=row.bEvidence!=='not-recorded';
+    return a!==b?0:row.differs?1:2;
   };
-  return results.sort((left, right) =>
-    priority(left) - priority(right) || left.code.localeCompare(right.code, 'nb', { numeric: true }));
+  return rows.sort((x,y)=>priority(x)-priority(y)||x.code.localeCompare(y.code,'nb',{numeric:true}));
 }
-export function additiveEvidenceLabel(state: AdditiveEvidenceState): string {
-  switch (state) {
-    case 'both': return 'Nevnt i ingredienslisten og registrert i E-kodefeltet';
-    case 'ingredients': return 'Kun nevnt i ingredienslisten';
-    case 'field': return 'Kun registrert i E-kodefeltet';
-    case 'not-recorded': return 'Ingen oppføring i disse feltene';
-  }
-}
+export { additiveEvidenceLabel };
 export function additiveDifferenceSummary(row: ComparedAdditive): string {
   const inA = row.aEvidence !== 'not-recorded';
   const inB = row.bEvidence !== 'not-recorded';
@@ -211,7 +192,7 @@ export function quickComparisonFacts(a: FoodProduct, b: FoodProduct): QuickCompa
         key:'ingredients',label:'Ingredienslister',
         summary:ai.toLowerCase()===bi.toLowerCase()
           ?'Listene har lik registrert ordlyd.':'Listene har forskjellig registrert ordlyd.',
-        detail:'Ordlyden beviser ikke i seg selv like eller ulike oppskrifter. Se hele kildeteksten under «Ingredienser» for å kontrollere det som faktisk er oppført.',
+        detail:ingredientComparisonInsight(a,b),
       });
     }else{
       facts.push({
@@ -239,10 +220,7 @@ export function comparisonInsight(a: FoodProduct, b: FoodProduct, focus: Compare
     if (a.nova === b.nova) return 'Begge produktene er registrert i NOVA ' + a.nova + '. Det betyr ikke at de har identisk sammensetning.';
     return a.name + ' er registrert i NOVA ' + a.nova + ', mens ' + b.name + ' er registrert i NOVA ' + b.nova + '. Vi kan ikke fastslå hvorfor klassifiseringene er ulike bare ut fra næringstallene. NOVA beskriver bearbeiding, ikke en samlet helsescore.';
   }
-  if (focus === 'ingredients') {
-    if (!a.ingredients || !b.ingredients) return 'Ingredienslisten mangler for minst ett produkt. Da kan vi ikke trekke sikre konklusjoner om forskjellene.';
-    return 'Begge ingredienslistene er registrert. Les dem nedenfor. Vi teller ikke ingredienser automatisk, siden kildetekstene ofte er flerspråklige eller ufullstendige.';
-  }
+  if (focus === 'ingredients') return ingredientComparisonInsight(a,b);
   const key = focus === 'protein' ? 'protein' : 'sugar';
   const x = a[key], y = b[key];
   if (x === null || y === null) return 'Opplysninger om ' + (focus === 'protein' ? 'protein' : 'sukkerarter') + ' mangler for minst ett produkt.';
@@ -300,7 +278,7 @@ export function keyDifferences(a: FoodProduct, b: FoodProduct): KeyDifference[] 
     if (normalizeText(a.ingredients) !== normalizeText(b.ingredients)) {
       results.push({
         key: 'ingredients', label: 'Ingredienslister',
-        description: 'Ingredienslistene har ulik ordlyd. Det bekrefter ikke i seg selv forskjellige ingredienser eller oppskrifter.',
+        description: ingredientComparisonInsight(a,b),
       });
     }
   }

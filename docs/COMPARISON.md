@@ -102,3 +102,12 @@ Kilder: [Santé publique France](https://www.santepubliquefrance.fr/en/nutrition
 ## Produsent- og kildekvalitet
 
 «Kort fortalt» på produktsiden viser bare registrerte fakta, ikke antatt eksponering eller personlig helserisiko. Ukjent næringsverdi er aldri null, E-kodeantall er ikke bevis på alle stoffer som er til stede, og produkter som er registrert for Norge kan likevel være utilgjengelige i norske butikker. Strenge matcheregler er med vilje viktigere enn høyt antall treff.
+
+
+## Felles dokumentasjon av E-koder og ingrediensord
+
+Produksiden og sammenligningen bruker nå samme funksjon `productAdditiveEvidence`. Den samler **bare eksplisitte E-numre** nevnt i ingredienslisten med databasens separate E-kodefelt. Hver kode viser om den kommer fra ingredienstekst, separat felt eller begge. Oppføringer som ikke kan gjenkjennes, beholdes i kildedataene, og E340-samlegrupper unngår dobbeltelling av egne underkoder.
+
+Tallet i «Kort fortalt» er antall eksplisitte *oppføringer*, ikke en beregnet total mengde tilsetningsstoffer. Manglende dokumentasjon betyr aldri «uten tilsetningsstoffer».
+
+En liten ordbasert sammenligning kan vise om eksempelvis «sukker», «søtstoff», «melk», «salt» eller «havre» er skrevet eksplisitt i bare én av ingredienslistene. Det er **ikke en fullstendig ingrediensparser**, og manglende ord i et felt er ikke bevis på at ingrediensen er fraværende. Hele ingredienslistene forblir tilgjengelige under detaljene.

@@ -16,7 +16,7 @@ test('snapshot keeps NOVA, sugar, E-code fields separate and factual',()=>{
  const lines=productSnapshot(sample,2);
  assert.match(lines[0],/NOVA 4/);
  assert.match(lines[1],/10,6 g/);
- assert.match(lines[2],/2 E-kodeoppføringer/);
+ assert.match(lines[2],/2 eksplisitt E-kodeoppføringer/);
  assert.doesNotMatch(lines.join(' '),/sunn|farlig|best/);
 });
 test('unknown information remains unknown; zero sugar is not missing',()=>{
@@ -24,5 +24,6 @@ test('unknown information remains unknown; zero sugar is not missing',()=>{
  assert.match(missing[0],/ikke oppgitt/);
  assert.match(missing[1],/ikke oppgitt/);
  assert.match(missing[2],/ikke at varen er fri/);
+ assert.match(productSnapshot(sample,0,2)[2],/2 oppføringer med ukjent format/);
  assert.match(productSnapshot({...sample,sugar:0},1)[1],/0 g/);
 });
