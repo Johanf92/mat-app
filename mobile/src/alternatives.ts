@@ -395,8 +395,7 @@ function variantKey(p: FoodProduct, kind: ProductKind): string {
     || kind === 'milk-low-fat' || kind === 'milk-whole'
     || kind === 'bread-wholegrain' || kind === 'bread-white'
     || kind === 'crispbread-rye' || kind === 'corn-flakes' || kind === 'jam-strawberry'
-    || kind === 'tomato-soup-powder' || kind === 'tomato-soup-ready'
-    || kind === 'tomato-ketchup' || kind === 'mackerel-tomato') {
+    || kind === 'tomato-soup-powder' || kind === 'tomato-soup-ready') {
     const metrics = [p.energy, p.protein, p.fat, p.carbs, p.sugar];
     if (metrics.filter(v => v !== null).length < 3) return identity(p);
     return kind + '|' + brand + '|' + (labeledLactoseFree(p) ? 'lactose-free' : 'unspecified')
