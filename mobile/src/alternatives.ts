@@ -69,7 +69,11 @@ function plainYogurt(p: FoodProduct): boolean {
     && (explicitlyPlain(p) || plainDairyIngredients(p));
 }
 function isDrink(p: FoodProduct): boolean {
-  return /(drink|drikke|drikk|dryck|juoma|melk|milk|beverage|barista|ikaffe|kaffe|coffee)/.test(textOf(p));
+  // Broad or stale drink tags must not turn a clearly named dry food into a beverage.
+  const name=fold(p.name);
+  if(/havregryn|rolled[\s-]*oats|oat[\s-]*flakes|porridge|grot|muesli|musli|granola|knekkebrod|bread|brod|flour|mel\b/.test(name)) return false;
+  return /(drink|drikke|drikk|dryck|juoma|melk|milk|beverage|barista|ikaffe|kaffe|coffee)/.test(name)
+    || (/^(?:havre|oat|kaura|hafer)/.test(name) && p.categories.some(tag=>/oat-drinks|oat-milks/.test(tag)));
 }
 
 /**
