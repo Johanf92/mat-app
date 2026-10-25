@@ -47,7 +47,7 @@ function plainDairyIngredients(p: FoodProduct): boolean {
   // This is deliberately not an allergen or dietary-safety assessment.
   const text = fold(p.ingredients ?? '');
   return text.length > 0 && text.length < 220
-    && /\b(melk|milk|flote|cream)\b/.test(text)
+    && /(melk|milk|flote|cream)/.test(text)
     && /(kultur|culture|cultures|ferment|melkesyrebakter)/.test(text)
     && !/(sukker|sugar|sirup|syrup|glukose|dextrose|honning|honey|syltetoy|jam|fruit|frukt|baer|berry|vanil|vanilla|aroma|flavo|sweeten|sotstoff|sotning|aspartam|stevia)/.test(text);
 }
