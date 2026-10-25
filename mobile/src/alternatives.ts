@@ -202,11 +202,11 @@ function pantryVariantProfile(p: FoodProduct): MatchProfile | null {
   const n = fold(p.name);
   // Names, not broad tags, must explicitly identify the food. Reject sauces
   // and flavoured fish products with different practical uses.
-  if (/\\b(ketchup|ketsjup)\\b/.test(n)) {
+  if (/\b(ketchup|ketsjup)\b/.test(n)) {
     if (/curry|karri|chili|chilli|spicy|hot|sterk|sriracha|bbq|barbecue|banan|banana|pizza|relish|sennep|mustard/.test(n)) return null;
     return { kind:'tomato-ketchup',label:'tomatketchup',category:'en:ketchups',fallback:'ketchup' };
   }
-  if (/\\b(makrell|mackerel)\\b/.test(n) && /\\b(tomat|tomato)\\b/.test(n)) {
+  if (/\b(makrell|mackerel)\b/.test(n) && /\b(tomat|tomato)\b/.test(n)) {
     if (/salat|salad|pasta|pizza|middag|ready[ -]*meal|chili|chilli|pepper|sterk|spicy/.test(n)) return null;
     return { kind:'mackerel-tomato',label:'makrell i tomat',category:'en:canned-mackerels',fallback:'makrell i tomat' };
   }
