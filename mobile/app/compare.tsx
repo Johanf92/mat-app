@@ -91,7 +91,7 @@ export default function Compare() {
   <View style={s.toolbar}><Pressable accessibilityRole="button" onPress={()=>router.canGoBack()?router.back():router.replace('/')} style={s.backButton}><Text style={s.back}>← Tilbake</Text></Pressable></View>
   <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.page}>
     <Text accessibilityRole="header" style={s.title}>Sammenlign matvarer</Text>
-    <Text style={s.note}>Faktiske registrerte verdier fra Open Food Facts. Ingen automatisk vinner.</Text>
+
     {loading&&<ActivityIndicator color={colors.green} size="large"/>}
     {!!error&&<Text accessibilityRole="alert" style={s.warning}>{error}</Text>}
     {left&&!rightCode&&!loading&&<View style={s.pick}>
@@ -129,17 +129,16 @@ export default function Compare() {
         <Text style={s.note}>Nutri-Score: {nutriScoreLabel(p.nutriScore)}</Text>
        </View>)}
       </View>
-      <Text style={s.note}>Opplysningene hentes på nytt fra produktdatabasen. Forslagslisten kan vise eldre verdier.</Text>
-      <Text style={s.note}>Nutri-Score (A–E) beskriver næringsprofil. NOVA (1–4) beskriver bearbeiding. Dette er ikke en samlet helsekarakter.</Text>
+
       <Pressable accessibilityRole="button" style={s.change} onPress={()=>{setRight(null);router.setParams({right:''});}}><Text style={s.changeText}>Endre produkt B →</Text></Pressable>
       {!sameType&&!relatedVariantNote&&<Text style={s.warning}>Disse varene er ikke bekreftet som samme produkttype. Sammenligningen kan derfor være mindre relevant.</Text>}
-      {!!sameType&&<Text style={s.note}>Varene er registrert som samme hovedtype. Oppskrift og variant kan likevel være forskjellige.</Text>}
+
       {!!relatedVariantNote&&<Text testID="related-variant-note" style={s.note}>{relatedVariantNote}</Text>}
       {!!variantWarning&&<Text style={s.warning}>{variantWarning}</Text>}
 
       <View testID="comparison-overview" style={s.quickPanel}>
         <Text accessibilityRole="header" style={s.quickTitle}>Kort oppsummert</Text>
-        <Text style={s.quickHint}>Trykk på et punkt for å lese mer om datagrunnlaget.</Text>
+
         {quickFacts.map((fact,index)=><View key={fact.key} style={[s.quickRow,index>0&&s.quickDivider]}>
           <Pressable testID={'quick-fact-'+fact.key} accessibilityRole="button"
             accessibilityLabel={fact.label+'. '+fact.summary} accessibilityState={{expanded:expandedFact===fact.key}}
@@ -154,14 +153,23 @@ export default function Compare() {
             <Text style={s.body}>{fact.detail}</Text>
           </View>}
         </View>)}
-        <Text style={s.quickFootnote}>Registrerte opplysninger, ikke en sunnhetsrangering. Manglende registrering er ikke bevis på fravær.</Text>
+
+      </View>
+      <View testID="comparison-key-nutrients" style={s.nutrientPreview}>
+        <Text style={s.previewHeading}>Næringsinnhold · per 100 g / 100 ml</Text>
+        <View style={s.tableHeader}><Text style={s.metricLabel}> </Text><Text style={s.metricValue}>A</Text><Text style={s.metricValue}>B</Text></View>
+        {METRICS.filter(m=>['sugar','protein','salt'].includes(m.key)).map(m=><View key={m.key} style={s.tableRow}>
+          <Text style={s.metricLabel}>{m.label}</Text>
+          <Text style={s.metricValue}>{metricAmount(left,m.key,m.unit)}</Text>
+          <Text style={s.metricValue}>{metricAmount(right,m.key,m.unit)}</Text>
+        </View>)}
       </View>
       {notices.length>0&&<View style={s.qualityCard}>
         <Text style={s.qualityHeading}>Verdt å kontrollere</Text>
         {notices.map((note,i)=><Text key={i} style={s.warning}>{note}</Text>)}
       </View>}
       <Text accessibilityRole="header" style={s.section}>Mer informasjon</Text>
-      <Text style={s.note}>Åpne den delen du vil undersøke. Du blir på samme side.</Text>
+
       <View style={s.disclosures}>
         <DetailSection id="focus" title="Forklar tallene" open={detailOpen==='focus'} onToggle={()=>toggleDetail('focus')}>
           <Text style={s.note}>Velg det du vil se nærmere på:</Text>
@@ -288,6 +296,8 @@ const s=StyleSheet.create({
  metricLabel:{flex:1.35,fontSize:13,color:colors.ink},metricValue:{flex:1,fontSize:13,textAlign:'right',color:colors.ink,fontWeight:'700'},
  ingredients:{backgroundColor:'white',borderRadius:13,borderColor:colors.line,borderWidth:1,padding:14,gap:10},
  additiveBox:{backgroundColor:'white',borderRadius:13,borderColor:colors.line,borderWidth:1,padding:14,gap:7},
+ nutrientPreview:{backgroundColor:'white',borderWidth:1,borderColor:colors.line,borderRadius:16,padding:15,gap:3},
+ previewHeading:{fontSize:16,fontWeight:'800',color:colors.ink,marginBottom:9},
  quickPanel:{backgroundColor:'#EDF4EE',borderRadius:18,padding:16,gap:10},
  quickTitle:{fontSize:21,fontWeight:'800',color:colors.ink},
  quickHint:{fontSize:12,lineHeight:18,color:colors.muted},
