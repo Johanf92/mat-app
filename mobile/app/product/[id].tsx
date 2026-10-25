@@ -7,7 +7,7 @@ import { amount, NOVA, novaInfo, type NovaGroup } from '../../src/catalog';
 import { useMarket } from '../../src/MarketContext';
 import { colors, InfoSheet, SourceLink, NovaBadge } from '../../src/ui';
 import { ADDITIVE_GENERAL_SOURCE, formatAdditiveCode, summarizeAdditives, type AdditiveInfo } from '../../src/additives';
-import { comparableCategory, findAlternatives } from '../../src/alternatives';
+import { comparableCategory, findAlternatives, productProfile } from '../../src/alternatives';
 
 type Topic = 'nova' | 'ingredients' | 'nutrition' | 'additives' | null;
 function Accordion({ title, children }: PropsWithChildren<{ title: string }>) {
@@ -106,7 +106,7 @@ export default function ProductScreen() {
           <View testID="product-alternatives" style={styles.alternatives}>
             <Text accessibilityRole="header" style={styles.alternativesTitle}>Lignende produkter</Text>
             {alternativesSupported ? <>
-              <Text style={styles.caption}>Søk {market.tag ? 'i ' + market.name : 'i alle land'}. Treffene vises her i appen.</Text>
+              <Text style={styles.caption}>Vi ser etter {productProfile(p)?.label} {market.tag ? 'registrert for ' + market.name : 'fra alle land'}. Forslagene vises her i appen.</Text>
               <Pressable testID="find-alternatives" accessibilityRole="button" accessibilityLabel="Finn alternativer i Matkontroll"
                 accessibilityHint="Søker og viser treff på denne siden, uten å åpne nettleseren."
                 accessibilityState={{ disabled: alternativesLoading, busy: alternativesLoading }}
@@ -117,13 +117,26 @@ export default function ProductScreen() {
               {alternativesLoading && <ActivityIndicator accessibilityLabel="Henter alternativer" color={colors.green} />}
               {!!alternativesError && <Text accessibilityRole="alert" style={styles.warning}>{alternativesError}</Text>}
               {alternativesRequested && !alternativesLoading && !alternativesError && alternatives.length === 0 && <Text style={styles.caption}>Ingen relevante alternativer med tilstrekkelige data ble funnet.</Text>}
-              {!alternativesLoading && !alternativesError && alternatives.map(other => <Pressable accessibilityRole="button" key={other.code} onPress={() => router.push({ pathname: '/product/[id]', params: { id: other.code } })} style={styles.altRow}>
+              {!alternativesLoading && !alternativesError && alternatives.map(other => <View key={other.code} style={styles.altRow}>
                 {other.image ? <Image source={{ uri: other.image }} style={styles.altImage} resizeMode="contain" /> : <View style={styles.altImage} />}
-                <View style={{ flex: 1, gap: 4 }}><Text style={styles.additiveName}>{other.name}</Text><Text style={styles.caption}>{other.brand}</Text>
-                <Text style={styles.caption}>Protein {amount(other.protein)} · Fett {amount(other.fat)} · Karbohydrat {amount(other.carbs)}</Text><NovaBadge group={other.nova} compact /></View><Text style={styles.arrow}>›</Text>
-              </Pressable>)}
+                <View style={{ flex: 1, gap: 6 }}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={'Se ' + other.name} onPress={() => router.push({ pathname: '/product/[id]', params: { id: other.code } })}>
+                    <Text style={styles.additiveName}>{other.name}</Text><Text style={styles.caption}>{other.brand}</Text>
+                  </Pressable>
+                  <Text style={styles.caption}>Protein {amount(other.protein)} · Fett {amount(other.fat)} · Karbohydrat {amount(other.carbs)}</Text>
+                  <NovaBadge group={other.nova} compact />
+                  <Pressable accessibilityRole="button" accessibilityLabel={'Sammenlign ' + p.name + ' med ' + other.name}
+                    onPress={() => router.push({ pathname: '/compare', params: { left: p.code, right: other.code } })} style={styles.compareButton}>
+                    <Text style={styles.compareText}>Sammenlign med denne →</Text>
+                  </Pressable>
+                </View>
+              </View>)}
               {alternativesRequested && !alternativesLoading && !alternativesError && alternatives.length > 0 && <Text style={styles.caption}>Samme kategori er et utgangspunkt, ikke en garanti for samme bruksområde, bedre innhold eller tilgjengelighet i butikk.</Text>}
             </> : <Text testID="alternatives-unavailable" style={styles.caption}>Alternativsøk støttes ikke for denne produktkategorien ennå.</Text>}
+            <Pressable accessibilityRole="button" testID="manual-compare"
+              onPress={() => router.push({ pathname: '/compare', params: { left: p.code } })} style={styles.manualCompare}>
+              <Text style={styles.compareText}>Velg en annen matvare selv →</Text>
+            </Pressable>
           </View>
           <Accordion key={p.code + '-source'} title="Kilde og datakvalitet">
             <Text style={styles.body}>Dataene kommer fra Open Food Facts og kan være feil eller ufullstendige.</Text>
@@ -188,6 +201,9 @@ const styles = StyleSheet.create({
   altButton: { minHeight: 44, borderWidth: 1, borderColor: colors.green, paddingHorizontal: 15, paddingVertical: 11, borderRadius: 12, alignItems: 'center', alignSelf: 'flex-start' },
   altButtonText: { fontSize: 14, fontWeight: '700', color: colors.green },
   altRow: { flexDirection: 'row', gap: 12, alignItems: 'center', padding: 12, borderWidth: 1, borderColor: colors.line, borderRadius: 14, backgroundColor: 'white' },
+  compareButton: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', paddingVertical: 7 },
+  manualCompare: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', paddingVertical: 7 },
+  compareText: { fontSize: 14, color: colors.green, fontWeight: '700' },
   altImage: { width: 58, height: 70, backgroundColor: '#EBF1EB', borderRadius: 9 },
   novaExplanation: { padding: 13, borderRadius: 12, gap: 4 }, explanationTitle: { fontSize: 15, fontWeight: '800' },
 });
