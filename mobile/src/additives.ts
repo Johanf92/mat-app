@@ -4,11 +4,16 @@ export type AdditiveInfo = {
 };
 export const ADDITIVE_GENERAL_SOURCE = 'https://www.efsa.europa.eu/en/topics/topic/food-additives';
 const NAMES_SOURCE = 'https://www.gov.uk/government/publications/approved-additives-and-e-numbers/approved-additives-and-e-numbers';
-const entries: Record<string, Omit<AdditiveInfo, 'id' | 'source'>> = {
+const NORWEGIAN_ADDITIVES_SOURCE = 'https://www.mattilsynet.no/mat-og-drikke/matproduksjon/tilsatte-stoffer-i-mat/bruk-av-tilsetningsstoffer';
+const SWEETENERS_SOURCE = 'https://www.mattilsynet.no/mat-og-drikke/matproduksjon/tilsatte-stoffer-i-mat/sotstoffer';
+const entries: Record<string, Omit<AdditiveInfo, 'id' | 'source'> & { source?: string }> = {
   E150D: { name: 'Ammoniumsulfittkaramell', role: 'Fargestoff', description: 'Gir produkter en brun farge.' },
   E290: { name: 'Karbondioksid', role: 'Gass', description: 'Brukes blant annet til å gi drikker kullsyre.' },
   E211: { name: 'Natriumbenzoat', role: 'Konserveringsmiddel', description: 'Brukes som konserveringsmiddel i enkelte matvarer og drikker.' },
   E338: { name: 'Fosforsyre', role: 'Surhetsregulerende middel', description: 'Kan brukes til å regulere surhetsgraden.' },
+  E331: { name: 'Natriumsitrater', role: 'Surhetsregulerende middel', description: 'Salter av sitronsyre som blant annet brukes til å regulere surhetsgraden. E-nummeret sier ikke hvor mye som er brukt i produktet.', source: NORWEGIAN_ADDITIVES_SOURCE },
+  E950: { name: 'Acesulfam K', role: 'Søtstoff', description: 'Et sterkt søtende søtstoff som kan brukes i drikker med lite eller uten tilsatt sukker. Mengden i denne varen er ikke oppgitt her.', source: SWEETENERS_SOURCE },
+  E951: { name: 'Aspartam', role: 'Søtstoff', description: 'Et sterkt søtende søtstoff. Aspartam inneholder fenylalanin, som personer med fenylketonuri (PKU / Føllings sykdom) må ta hensyn til. Kontroller alltid den faktiske merkingen på emballasjen.', source: SWEETENERS_SOURCE },
   E340: { name: 'Kaliumfosfater', role: 'Surhetsregulerende middel', description: 'Samlebetegnelse for kaliumfosfater. Ulike varianter har egne undernumre.' },
   E340II: { name: 'Dikaliumfosfat', role: 'Surhetsregulerende middel', description: 'En variant i E340-familien. Kan brukes til å regulere surhetsgraden.' },
 };
@@ -47,7 +52,7 @@ export function additiveInfo(raw: string): AdditiveInfo | null {
   const id = normalizeAdditive(raw);
   if (!id) return null;
   const entry = entries[id];
-  return entry ? { id, ...entry, source: NAMES_SOURCE } : {
+  return entry ? { id, ...entry, source: entry.source ?? NAMES_SOURCE } : {
     id, name: 'Forklaring mangler', role: 'Funksjon ikke avklart',
     description: 'Koden er registrert i datakilden, men vi har ikke en forklaring for dette nummeret ennå. Vi gjetter ikke på funksjonen.',
     source: ADDITIVE_GENERAL_SOURCE,
