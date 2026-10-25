@@ -55,7 +55,7 @@ export default function Home() {
       </View>
       <Text style={styles.caption}>{submitted?.barcode ? 'Strekkodeoppslag i alle land.' : market.tag ? 'Søker i produkter registrert for ' + market.name + '.' : 'Søker i produkter fra alle land.'}</Text>
       {!submitted && <Pressable accessibilityRole="button" onPress={() => router.push('/scanner')} style={styles.camera}>
-        <Text style={styles.cameraTitle}>▣  Skann strekkode med kamera</Text><Text style={styles.caption}>Hold kameraet foran strekkoden. Vi finner produktet automatisk.</Text>
+        <View style={styles.cameraHeading}><Text style={styles.cameraIcon} accessibilityElementsHidden>📷</Text><Text style={styles.cameraTitle}>Skann strekkode med kamera</Text></View><Text style={styles.caption}>Hold kameraet foran strekkoden. Vi finner produktet automatisk.</Text>
       </Pressable>}
       {loading && <View style={styles.loading}><ActivityIndicator color={colors.green} /><Text style={styles.caption}>Henter produkter…</Text></View>}
       {!!error && <Text accessibilityRole="alert" style={styles.message}>{error}</Text>}
@@ -65,7 +65,7 @@ export default function Home() {
         {results.map(p => <Pressable key={p.code} accessibilityRole="button" accessibilityLabel={'Vis ' + p.name}
           onPress={() => router.push({ pathname: '/product/[id]', params: { id: p.code } })} style={styles.product}>
           {p.image ? <Image source={{ uri: p.image }} style={styles.thumb} resizeMode="contain" /> : <View style={styles.thumb} />}
-          <View style={styles.productInfo}><Text numberOfLines={2} style={styles.productName}>{p.name}</Text><Text numberOfLines={1} style={styles.caption}>{p.brand}</Text><NovaBadge group={p.nova} compact /></View>
+          <View style={styles.productInfo}><Text numberOfLines={2} style={styles.productName}>{p.name}</Text><Text numberOfLines={1} style={styles.caption}>{p.brand}</Text><Text style={styles.caption}>NOVA oppdateres når du åpner produktet</Text></View>
           <Text style={styles.arrow}>›</Text>
         </Pressable>)}
         {!!results.length && <Text style={styles.caption}>Viser opptil 20 treff. Landregistrering er ikke en lagerstatus.</Text>}
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   searchButton: { minHeight: 50, backgroundColor: colors.green, borderRadius: 13, padding: 15, alignItems: 'center' },
   disabled: { opacity: 0.5 }, buttonText: { color: 'white', fontSize: 17, fontWeight: '700' },
   caption: { fontSize: 12, lineHeight: 19, color: colors.muted }, camera: { borderWidth: 1, borderColor: '#246C4C', backgroundColor: '#E5F0E7', padding: 18, borderRadius: 17, gap: 7 },
-  cameraTitle: { fontSize: 17, fontWeight: '700', color: colors.green }, loading: { paddingVertical: 20, gap: 10, alignItems: 'center' },
+  cameraHeading: { flexDirection: 'row', alignItems: 'center', gap: 10 }, cameraIcon: { fontSize: 22 }, cameraTitle: { fontSize: 17, fontWeight: '700', color: colors.green, flexShrink: 1 }, loading: { paddingVertical: 20, gap: 10, alignItems: 'center' },
   message: { padding: 16, borderRadius: 13, backgroundColor: '#FFF0DD', color: '#724300', lineHeight: 23 }, section: { fontSize: 19, fontWeight: '800', color: colors.ink },
   product: { flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: 'white', borderWidth: 1, borderColor: colors.line, padding: 13, borderRadius: 17 },
   thumb: { width: 57, height: 75, borderRadius: 9, backgroundColor: '#EDF2ED' }, productInfo: { flex: 1, gap: 6 },
