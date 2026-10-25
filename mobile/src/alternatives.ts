@@ -120,6 +120,20 @@ export function comparableCategory(p: FoodProduct): string | null {
 export function matchesProfile(p: FoodProduct, profile: MatchProfile): boolean {
   return productProfile(p)?.kind === profile.kind;
 }
+
+/**
+ * Two products may be excellent manual comparisons even when they should not
+ * be suggested as automatic like-for-like replacements.
+ */
+export function relatedVariantComparisonNote(a: FoodProduct, b: FoodProduct): string | null {
+  const left = productProfile(a)?.kind;
+  const right = productProfile(b)?.kind;
+  if (left === 'cola-regular' && right === 'cola-sugar-free')
+    return 'Begge er cola, men produkt A er vanlig cola og produkt B er sukkerfri cola. Dette er en relevant sammenligning av ulike varianter, ikke av identiske oppskrifter.';
+  if (left === 'cola-sugar-free' && right === 'cola-regular')
+    return 'Begge er cola, men produkt A er sukkerfri cola og produkt B er vanlig cola. Dette er en relevant sammenligning av ulike varianter, ikke av identiske oppskrifter.';
+  return null;
+}
 /** Only a label claim, not a test of lactose content or milk allergen safety. */
 export function labeledLactoseFree(p: FoodProduct): boolean {
   const name = fold(p.name);
