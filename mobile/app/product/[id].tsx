@@ -8,6 +8,7 @@ import { useMarket } from '../../src/MarketContext';
 import { colors, InfoSheet, SourceLink, NovaBadge } from '../../src/ui';
 import { ADDITIVE_GENERAL_SOURCE, formatAdditiveCode, summarizeAdditives, type AdditiveInfo } from '../../src/additives';
 import { comparableCategory, findAlternatives, productProfile, candidateNote } from '../../src/alternatives';
+import { displayIngredientText, ingredientCodeNote } from '../../src/ingredientEvidence';
 
 type Topic = 'nova' | 'ingredients' | 'nutrition' | 'additives' | null;
 function Accordion({ title, children }: PropsWithChildren<{ title: string }>) {
@@ -79,7 +80,7 @@ export default function ProductScreen() {
         <View style={styles.accordions}>
           <Accordion key={p.code + '-ingredients'} title="Ingredienser">
             <Text style={styles.caption}>{['no', 'nb'].includes(p.ingredientLanguage) ? 'Tekst registrert i norsk språkfelt.' : 'Tekst fra datakilden. Kan inneholde flere språk; ikke automatisk oversatt.'}</Text>
-            <Text style={styles.body} numberOfLines={fullIngredients ? undefined : 5}>{p.ingredients || 'Ingredienslisten er ikke oppgitt.'}</Text>
+            <Text style={styles.body} numberOfLines={fullIngredients ? undefined : 5}>{displayIngredientText(p.ingredients) || 'Ingredienslisten er ikke oppgitt.'}</Text>
             {!!p.ingredients && <Pressable accessibilityRole="button" accessibilityState={{ expanded: fullIngredients }} onPress={() => setFullIngredients(!fullIngredients)} style={styles.infoButton}><Text style={styles.info}>{fullIngredients ? 'Vis mindre' : 'Vis hele teksten'}</Text></Pressable>}
             <Pressable accessibilityRole="button" onPress={() => setTopic('ingredients')} style={styles.infoButton}><Text style={styles.info}>Om ingredienslisten ⓘ</Text></Pressable>
           </Accordion>
@@ -96,7 +97,8 @@ export default function ProductScreen() {
             {additives.unrecognized.map(raw => <View key={raw} style={styles.additiveRow}>
               <View style={{ flex: 1, gap: 3 }}><Text style={styles.additiveName}>{raw}</Text><Text style={styles.caption}>Ukjent kodeformat fra datakilden. Oppføringen er beholdt, men ikke tolket.</Text></View>
             </View>)}
-            <Text style={styles.caption}>Registreringene kan være ufullstendige. Originalkodene er tilgjengelige under «Kilde og datakvalitet».</Text>
+            {!!ingredientCodeNote(p.ingredients,p.additives) && <Text style={styles.warning}>{ingredientCodeNote(p.ingredients,p.additives)}</Text>}
+            <Text style={styles.caption}>Koder nevnt i ingrediensteksten telles ikke automatisk som registrerte E-stoffer. Originalkodene er tilgjengelige under «Kilde og datakvalitet».</Text>
             <Pressable accessibilityRole="button" onPress={() => setTopic('additives')} style={styles.infoButton}><Text style={styles.info}>Hva betyr E-numrene? ⓘ</Text></Pressable>
           </Accordion>
           <Accordion key={p.code + '-allergens'} title="Allergenopplysninger">
@@ -168,7 +170,7 @@ export default function ProductScreen() {
         <SourceLink label="Kilde: Open Food Facts om NOVA" url="https://world.openfoodfacts.org/nova" />
       </>}
       {topic === 'nutrition' && <><Text style={styles.body}>Protein, fett og karbohydrat vises separat. Sukkerarter er en del av karbohydratene, ikke noe du skal legge til en gang til.</Text><Text style={styles.body}>Sukkerarter inkluderer naturlig forekommende sukker. Tallet forteller ikke alene hvor mye som er tilsatt. Sammenlign samme type vare og samme målegrunnlag.</Text><Text style={styles.caption}>Målegrunnlaget er ikke alltid entydig i API-et. Derfor viser vi ikke beregnede porsjoner eller automatiske rangeringer ennå.</Text></>}
-      {topic === 'ingredients' && <><Text style={styles.body}>Dette er teksten datakilden har registrert, ikke en oppskrift vi har utledet. Vi rydder bare i tegnkoder som &amp;quot; og beholder hele teksten.</Text><Text style={styles.body}>Feilregistrerte lister kan inneholde flere språk eller næringsdeklarasjon. Vi kutter ikke bort innhold automatisk, siden viktige opplysninger kan gå tapt.</Text></>}
+      {topic === 'ingredients' && <><Text style={styles.body}>Dette er teksten datakilden har registrert, ikke en oppskrift vi har utledet. Vi rydder bare i tegnkoder og skjuler understreker brukt som formateringsmarkeringer. Ingen ingrediensnavn oversettes eller fjernes.</Text><Text style={styles.body}>Feilregistrerte lister kan inneholde flere språk eller næringsdeklarasjon. Vi kutter ikke bort innhold automatisk, siden viktige opplysninger kan gå tapt.</Text></>}
       {topic === 'additives' && <>
         <Text style={styles.body}>Et E-nummer identifiserer et tilsetningsstoff. Koden alene sier ikke hvor mye som er brukt i produktet.</Text>
         <Text style={styles.body}>Trykk på en oppføring for en kort forklaring. Forklaringsregisteret er foreløpig lite. Ukjente koder beholdes uten at vi gjetter funksjonen.</Text>

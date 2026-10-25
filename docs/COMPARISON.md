@@ -42,3 +42,22 @@ Referanser: https://openfoodfacts.github.io/search-a-licious/users/ref-openapi/ 
 - Prøve levende søk på Oatly iKaffe og gresk naturell yoghurt på Android/iOS.
 - Teste målegrunnlag og produktvarianter (100 g vs. 100 ml, original versus tilberedt).
 - Gradvis utvide matchingen med kildebelagte regler; ikke konstruere en generisk «bedre mat»-score.
+
+
+## Sprint: forskjeller og dokumentasjon
+
+Sammenligningssiden viser først en kort «Hva er forskjellen?»-oppsummering etter produktkortene.
+Den tar med tydelig ulike NOVA-registreringer og kontrollerbare forskjeller i
+sukkerarter, protein og salt når begge verdier finnes. Ingredienstekst vurderes
+bare på ordlyd (ikke ingrediensantall eller oppskriftslikhet). Ingen automatisk
+kåring av «sunnest».
+
+Open Food Facts kan markere enkelte ingredienser med understreker (for eksempel
+«_lettmelk_»). Dette skjules kun i brukergrensesnittet; originalfeltet endres
+ikke og navn eller ingredienser oversettes ikke.
+
+Et eksplisitt E-nummer som står i ingredienslisten, sammenlignes med de
+**separat registrerte** E-kodene. Manglende samsvar vises som et mulig
+registreringshull, men kodene legges ikke automatisk til registreringslisten
+og telles ikke som registrerte tilsetningsstoffer. Kjemiske stoffnavn gir ikke
+grunnlag for å utlede en E-kode.

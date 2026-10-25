@@ -44,6 +44,7 @@ function harness({ supported = true, find = async () => [], note = () => null } 
     '../../src/MarketContext': { useMarket: () => ({ market }) },
     '../../src/ui': { colors: {}, InfoSheet: 'InfoSheet', SourceLink: 'SourceLink', NovaBadge: 'NovaBadge' },
     '../../src/additives': { ADDITIVE_GENERAL_SOURCE: '', formatAdditiveCode: x => x, summarizeAdditives: () => ({ title: 'Tilsetningsstoffer', rawTags: [], items: [], unrecognized: [] }) },
+    '../../src/ingredientEvidence': { displayIngredientText: value => value || '', ingredientCodeNote: () => null },
     '../../src/alternatives': {
       comparableCategory: () => supported ? 'en:oat-drinks' : null,
       productProfile: () => supported ? { kind: 'oat-drink', label: 'havredrikker', category: 'en:oat-drinks' } : null,
@@ -184,4 +185,12 @@ test('data discrepancy note appears beside the candidate without making a health
  const panel = byId(h.render(), 'product-alternatives');
  assert.match(text(panel), /Stor forskjell i karbohydrater/);
  assert.doesNotMatch(text(panel), /sunnere|sunnest|anbefalt/);
+});
+
+
+test('ingredient evidence stays distinct from source-registered additives', () => {
+ const all=nodes(harness().render());
+ const ingredientAccordion=all.find(x=>x.type?.name==='Accordion'&&x.props?.title==='Ingredienser');
+ assert.ok(ingredientAccordion);
+ assert.ok(text(ingredientAccordion).includes('Oats, water'));
 });

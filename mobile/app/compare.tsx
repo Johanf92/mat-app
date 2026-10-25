@@ -4,9 +4,10 @@ import { ActivityIndicator, Image, Keyboard, Pressable, ScrollView, StyleSheet, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { type FoodProduct, getProduct, searchProducts } from '../src/openFoodFacts';
 import { useMarket } from '../src/MarketContext';
-import { type CompareFocus, COMPARE_OPTIONS, METRICS, comparisonInsight, metricAmount, comparisonDataWarnings } from '../src/comparison';
+import { type CompareFocus, COMPARE_OPTIONS, METRICS, comparisonInsight, metricAmount, comparisonDataWarnings, keyDifferences } from '../src/comparison';
 import { productProfile, candidateNote } from '../src/alternatives';
-import { summarizeAdditives } from '../src/additives';
+import { formatAdditiveCode, summarizeAdditives } from '../src/additives';
+import { displayIngredientText, ingredientCodeNote } from '../src/ingredientEvidence';
 import { colors, NovaBadge, SourceLink } from '../src/ui';
 
 export default function Compare() {
@@ -97,6 +98,14 @@ export default function Compare() {
       {!sameType&&<Text style={s.warning}>Disse varene er ikke bekreftet som samme produkttype. Sammenligningen kan derfor være mindre relevant.</Text>}
       {!!sameType&&<Text style={s.note}>Varene er registrert som samme hovedtype. Oppskrift og variant kan likevel være forskjellige.</Text>}
       {!!variantWarning&&<Text style={s.warning}>{variantWarning}</Text>}
+      <View testID="key-differences" style={s.differences}>
+       <Text accessibilityRole="header" style={s.differencesTitle}>Hva er forskjellen?</Text>
+       {keyDifferences(left,right).map((entry,index)=><View key={entry.key} style={[s.differenceRow,index>0&&s.differenceDivider]}>
+         <Text style={s.differenceLabel}>{entry.label}</Text>
+         <Text style={s.body}>{entry.description}</Text>
+       </View>)}
+       <Text style={s.note}>Bare registrerte opplysninger. Kontroller varevariant og målegrunnlag på emballasjen.</Text>
+      </View>
       <Text style={s.section}>Hva vil du se nærmere på?</Text>
       <View style={s.options}>
         {COMPARE_OPTIONS.map(o=><Pressable key={o.key} accessibilityRole="button" accessibilityState={{selected:focus===o.key}} style={[s.option,focus===o.key&&s.optionSelected]} onPress={()=>setFocus(o.key)}>
@@ -111,13 +120,14 @@ export default function Compare() {
       {METRICS.map(m=><View key={m.key} style={s.tableRow}><Text style={s.metricLabel}>{m.label}</Text><Text style={s.metricValue}>{metricAmount(left,m.key,m.unit)}</Text><Text style={s.metricValue}>{metricAmount(right,m.key,m.unit)}</Text></View>)}
       <Text style={s.section}>Ingredienser</Text>
       {[left,right].map((p,index)=><View key={p.code+'ingredients'} style={s.ingredients}><Text style={s.resultName}>Produkt {index===0?'A':'B'} · {p.name}</Text>
-       <Text style={s.body} numberOfLines={showIngredients?undefined:5}>{p.ingredients||'Ingredienslisten er ikke oppgitt.'}</Text>
+       <Text style={s.body} numberOfLines={showIngredients?undefined:5}>{displayIngredientText(p.ingredients)||'Ingredienslisten er ikke oppgitt.'}</Text>
       </View>)}
       <Pressable accessibilityRole="button" onPress={()=>setShowIngredients(!showIngredients)} style={s.change}><Text style={s.changeText}>{showIngredients?'Vis mindre':'Vis hele ingredienslistene'}</Text></Pressable>
       <Text style={s.section}>Registrerte tilsetningsstoffer</Text>
       {[left,right].map((p,index)=>{const info=summarizeAdditives(p.additives);return <View key={p.code+'additives'} style={s.additiveBox}>
        <Text style={s.resultName}>Produkt {index===0?'A':'B'} · {p.name}</Text>
-       <Text style={s.body}>{info.rawTags.length?info.items.map(x=>x.id).concat(info.unrecognized).join(', '):'Ikke oppgitt – dette betyr ikke at varen er uten tilsetningsstoffer.'}</Text>
+       <Text style={s.body}>{info.rawTags.length?info.items.map(x=>formatAdditiveCode(x.id)).concat(info.unrecognized).join(', '):'Ingen E-koder registrert i eget felt. Dette betyr ikke at varen er uten tilsetningsstoffer.'}</Text>
+       {!!ingredientCodeNote(p.ingredients,p.additives)&&<Text style={s.warning}>{ingredientCodeNote(p.ingredients,p.additives)}</Text>}
       </View>})}
       <Text style={s.warning}>Kildeopplysninger kan være ufullstendige. Kontroller alltid emballasjen ved allergi. NOVA er ikke en samlet helsevurdering.</Text>
       <SourceLink label="Kilde for produkt A (åpner nettleseren)" url={'https://world.openfoodfacts.org/product/'+left.code}/>
@@ -142,6 +152,11 @@ const s=StyleSheet.create({
  changeText:{color:colors.green,fontSize:14,fontWeight:'700'},options:{flexDirection:'row',flexWrap:'wrap',gap:9},option:{flexBasis:'46%',flexGrow:1,minHeight:44,justifyContent:'center',alignItems:'center',borderColor:colors.line,borderWidth:1,borderRadius:20,paddingHorizontal:10,paddingVertical:10,backgroundColor:'white'},
  optionSelected:{borderColor:colors.green,backgroundColor:'#E2F0E5'},optionText:{fontSize:13,fontWeight:'600',color:colors.muted},optionTextSelected:{color:colors.green},
  insight:{backgroundColor:'#E5F1E7',borderRadius:16,padding:17,gap:9},insightTitle:{fontSize:16,fontWeight:'800',color:colors.ink},
+ differences:{backgroundColor:'#EDF4EE',borderRadius:16,padding:16,gap:13},
+ differencesTitle:{fontSize:20,fontWeight:'800',color:colors.ink},
+ differenceRow:{gap:5},
+ differenceDivider:{borderTopWidth:1,borderTopColor:'#D6E1D8',paddingTop:12},
+ differenceLabel:{fontSize:14,fontWeight:'800',color:colors.green},
  qualityCard:{backgroundColor:'#FFF3E5',borderRadius:14,padding:15,gap:8},qualityHeading:{fontSize:15,fontWeight:'800',color:'#80551C'},
  tableHeader:{flexDirection:'row',borderBottomColor:colors.line,borderBottomWidth:2,paddingBottom:10},
  tableRow:{flexDirection:'row',borderBottomColor:colors.line,borderBottomWidth:1,paddingVertical:12,gap:7,alignItems:'center'},

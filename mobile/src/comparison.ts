@@ -1,5 +1,7 @@
 import { type FoodProduct } from './openFoodFacts';
 import { amount } from './catalog';
+import { ingredientCodeEvidence, displayIngredientText } from './ingredientEvidence';
+import { normalizeAdditive } from './additives';
 
 export type CompareFocus = 'processing' | 'ingredients' | 'protein' | 'sugar';
 export const COMPARE_OPTIONS: { key: CompareFocus; label: string }[] = [
@@ -43,6 +45,79 @@ export function comparisonInsight(a: FoodProduct, b: FoodProduct, focus: Compare
   return higher + ' har ' + amount(difference) + ' mer ' + (focus === 'protein' ? 'protein' : 'sukkerarter') + ' per 100 g / 100 ml (slik kilden oppgir).' + qualifier;
 }
 
+
+export type KeyDifference = { key: string; label: string; description: string };
+const DIFFERENCE_THRESHOLDS = { sugar: 0.5, protein: 0.5, salt: 0.05 } as const;
+
+/**
+ * A compact factual overview, deliberately not a ranking. Similar ingredients
+ * wording is not proof of identical recipes; different wording is not proof
+ * of different ingredients. Only compare explicitly available values.
+ */
+export function keyDifferences(a: FoodProduct, b: FoodProduct): KeyDifference[] {
+  const results: KeyDifference[] = [];
+  if (a.nova !== null && b.nova !== null && a.nova !== b.nova) {
+    results.push({
+      key: 'nova', label: 'Bearbeiding',
+      description: 'A: NOVA ' + a.nova + ' · B: NOVA ' + b.nova
+        + '. Dette er registrert bearbeidingsgrad, ikke en helsevurdering.',
+    });
+  } else if ((a.nova === null) !== (b.nova === null)) {
+    results.push({
+      key: 'nova-unknown', label: 'Bearbeiding',
+      description: 'NOVA mangler for minst ett produkt. Vi kan ikke sammenligne bearbeidingsgraden sikkert.',
+    });
+  }
+  for (const metric of ['sugar', 'protein', 'salt'] as const) {
+    const x = a[metric], y = b[metric];
+    if (x === null || y === null) continue;
+    const delta = Math.abs(x - y);
+    if (delta < DIFFERENCE_THRESHOLDS[metric]) continue;
+    const label = metric === 'sugar' ? 'Sukkerarter' : metric === 'protein' ? 'Protein' : 'Salt';
+    const note = metric === 'sugar' ? ' Sukkerarter kan være naturlig forekommende.' : '';
+    results.push({
+      key: metric, label,
+      description: 'A: ' + amount(x) + ' · B: ' + amount(y)
+        + '. Forskjell: ' + amount(delta) + ' per oppgitt 100 g / 100 ml.' + note,
+    });
+  }
+  if (!a.ingredients || !b.ingredients) {
+    results.push({
+      key: 'missing-ingredients', label: 'Ingrediensdata',
+      description: 'Ingredienslisten mangler for minst ett produkt. Vi kan ikke sammenligne hele innholdet.',
+    });
+  } else {
+    const normalizeText = (value: string) => displayIngredientText(value).trim().toLowerCase().replace(/\s+/g, ' ');
+    if (normalizeText(a.ingredients) !== normalizeText(b.ingredients)) {
+      results.push({
+        key: 'ingredients', label: 'Ingredienslister',
+        description: 'Ingredienslistene har ulik ordlyd. Det bekrefter ikke i seg selv forskjellige ingredienser eller oppskrifter.',
+      });
+    }
+  }
+  const recorded = (tags: readonly string[]) =>
+    [...new Set(tags.map(normalizeAdditive).filter((code): code is string => code !== null))].sort().join('|');
+  const codesFromText = ingredientCodeEvidence(a.ingredients, a.additives).notInSeparateField.length > 0
+    || ingredientCodeEvidence(b.ingredients, b.additives).notInSeparateField.length > 0;
+  if (codesFromText) {
+    results.push({
+      key: 'e-code-data', label: 'Datakvalitet',
+      description: 'Minst én E-kode nevnt i en ingrediensliste mangler med samme kode i datakildens separate E-kodefelt.',
+    });
+  } else if (recorded(a.additives) !== recorded(b.additives)) {
+    results.push({
+      key: 'e-codes', label: 'E-koder i datakilden',
+      description: 'Det er registrert ulike E-koder for varene. Dette bekrefter ikke at alle tilsetningsstoffer er kartlagt.',
+    });
+  }
+  if (results.length === 0) {
+    return [{
+      key: 'no-clear-differences', label: 'Ingen tydelige registrerte forskjeller',
+      description: 'De kontrollerte feltene viser ingen tydelig forskjell. Det bekrefter ikke at varene er identiske.',
+    }];
+  }
+  return results.slice(0, 4);
+}
 
 /**
  * Only assert cross-field contradictions directly visible in the source.
