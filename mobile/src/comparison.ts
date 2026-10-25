@@ -2,6 +2,7 @@ import { type FoodProduct } from './openFoodFacts';
 import { amount } from './catalog';
 import { ingredientCodeEvidence, displayIngredientText } from './ingredientEvidence';
 import { ingredientComparisonInsight } from './ingredientComparison';
+import { productDataStatus } from './productDataStatus';
 import { productAdditiveEvidence, additiveEvidenceLabel, type AdditiveEvidenceState } from './productEvidence';
 import { additiveInfo, formatAdditiveCode, normalizeAdditive } from './additives';
 
@@ -213,7 +214,9 @@ export function quickComparisonFacts(a: FoodProduct, b: FoodProduct): QuickCompa
 }
 
 export function metricAmount(product: FoodProduct, metric: MetricKey, unit = 'g'): string {
-  return amount(product[metric], unit);
+  const text=amount(product[metric],unit);
+  return metric==='energy'&&product.energyConvertedFromKJ&&product.energy!==null
+    ?'ca. '+text:text;
 }
 
 export function comparisonInsight(a: FoodProduct, b: FoodProduct, focus: CompareFocus): string {
@@ -315,8 +318,8 @@ export function keyDifferences(a: FoodProduct, b: FoodProduct): KeyDifference[] 
 export function comparisonDataWarnings(a: FoodProduct, b: FoodProduct): string[] {
   const notices: string[] = [];
   for (const [letter, product] of [['A', a], ['B', b]] as const) {
-    if (product.sugar !== null && product.carbs !== null && product.sugar > product.carbs + 0.1)
-      notices.push('Produkt ' + letter + ' har registrert mer sukkerarter enn karbohydrater. Dette kan være en feil i datagrunnlaget.');
+    for(const issue of productDataStatus(product).issues)
+      notices.push('Produkt '+letter+': '+issue);
   }
   return notices;
 }

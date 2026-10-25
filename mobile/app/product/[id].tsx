@@ -65,6 +65,7 @@ export default function ProductScreen() {
   const alternativesSupported = p !== null && comparableCategory(p) !== null;
   // The heading, cards and raw-data disclosure share the same presentation model.
   const additives = productAdditiveEvidence(p ?? {ingredients:undefined,additives:[]});
+  const dataStatus = p ? productDataStatus(p) : null;
   const titles: Record<Exclude<Topic, null>, string> = { nova: 'Hva betyr NOVA?', nutriscore:'Hva betyr Nutri-Score?', ingredients: 'Om ingredienslisten', nutrition: 'Slik leser du næringsinnhold', additives: 'Om tilsetningsstoffer' };
   return <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
     <View style={styles.toolbar}><Pressable accessibilityRole="button" onPress={() => router.canGoBack() ? router.back() : router.replace('/')} style={styles.backButton}><Text style={styles.back}>← Tilbake til søk</Text></Pressable></View>
@@ -101,6 +102,7 @@ export default function ProductScreen() {
         <View testID="product-snapshot" style={styles.snapshot}>
           <Text style={styles.snapshotHeading}>Kort fortalt</Text>
           {productSnapshot(p,additives.items.length,additives.unrecognized.length).map((fact,index)=><Text key={index} style={styles.body}>{fact}</Text>)}
+          {!!dataStatus?.summaryNotice && <Text testID="product-data-caveat" style={styles.caption}>{dataStatus.summaryNotice}</Text>}
           <Text style={styles.caption}>Dette er registrerte kildeopplysninger, ikke en samlet helsevurdering.</Text>
         </View>
         <View style={styles.accordions}>
@@ -113,7 +115,7 @@ export default function ProductScreen() {
           </Accordion>
           <Accordion key={p.code + '-nutrition'} title="Alt næringsinnhold">
             <Text style={styles.caption}>Per 100 g / 100 ml. Ingen porsjoner er beregnet.</Text>
-            {([['Energi', p.energy, 'kcal'], ['Protein', p.protein, 'g'], ['Fett', p.fat, 'g'], ['Karbohydrat', p.carbs, 'g'], ['Hvorav sukkerarter', p.sugar, 'g'], ['Fiber', p.fiber, 'g'], ['Salt', p.salt, 'g']] as const).map(([label, value, unit]) => <View key={label} style={styles.nutrientRow}><Text style={styles.body}>{label}</Text><Text style={styles.nutrientValue}>{amount(value, unit)}</Text></View>)}
+            {([['Energi', p.energy, 'kcal'], ['Protein', p.protein, 'g'], ['Fett', p.fat, 'g'], ['Karbohydrat', p.carbs, 'g'], ['Hvorav sukkerarter', p.sugar, 'g'], ['Fiber', p.fiber, 'g'], ['Salt', p.salt, 'g']] as const).map(([label, value, unit]) => <View key={label} style={styles.nutrientRow}><Text style={styles.body}>{label}</Text><Text style={styles.nutrientValue}>{unit==='kcal'&&p.energyConvertedFromKJ&&value!==null?'ca. '+amount(value,unit):amount(value,unit)}</Text></View>)}
           </Accordion>
           <Accordion key={p.code + '-additives'} title={additives.title}>
             {additives.items.length === 0 && additives.unrecognized.length===0 && <Text testID="missing-e-codes" style={styles.body}>Ingen eksplisitte E-numre registrert i ingredienslisten eller Open Food Facts sitt E-kodefelt. Kontroller emballasjen. Manglende oppføring betyr ikke at varen er fri for tilsetningsstoffer.</Text>}
@@ -179,8 +181,8 @@ export default function ProductScreen() {
           </View>
           <Accordion key={p.code + '-source'} title="Kilde og datakvalitet">
             <Text style={styles.body}>Dataene kommer fra Open Food Facts og kan være feil eller ufullstendige.</Text>
-            <Text testID="product-data-status" style={styles.caption}>{productDataStatus(p).headline}</Text>
-            {productDataStatus(p).notes.map(note => <Text key={note} style={styles.caption}>• {note}</Text>)}
+            <Text testID="product-data-status" style={styles.caption}>{dataStatus?.headline}</Text>
+            {dataStatus?.notes.map(note => <Text key={note} style={styles.caption}>• {note}</Text>)}
             <Text style={styles.body}>{market.tag === null ? 'Du søker i alle land.' : p.countries.includes(market.tag) ? 'Registrert for ' + market.name + '. Dette er ikke en lagerstatus.' : 'Ikke registrert for ' + market.name + ' i dataene vi har. Varen kan likevel finnes der.'}</Text>
             <Text style={styles.caption}>Strekkode: {p.code}</Text>
             {!!additives.rawTags.length && <Text selectable style={styles.caption}>Originale tilsetningsstoffkoder: {additives.rawTags.join(', ')}</Text>}

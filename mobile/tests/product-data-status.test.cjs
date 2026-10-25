@@ -44,3 +44,29 @@ test('a normal unknown energy value is not treated as zero calories',()=>{
  assert.equal(data.observedNutrients,5);
  assert.ok(!data.notes.some(x=>/Energien står som 0/.test(x)));
 });
+
+
+test('data status distinguishes conversions, missing important fields and Nutri-Score unknown',()=>{
+ const data=productDataStatus({...base,energy:61,energyConvertedFromKJ:true,nutriScore:null,ingredients:undefined,
+  protein:null,carbs:null,sugar:null});
+ assert.equal(data.observedNutrients,3);
+ assert.match(data.headline,/3 av 7/);
+ assert.match(data.summaryNotice,/Viktige opplysninger mangler/);
+ assert.ok(data.notes.some(n=>n.includes('4,184 kJ')));
+ assert.ok(data.notes.some(n=>n.includes('Nutri-Score er ikke oppgitt')));
+ assert.equal(data.issues.length,0);
+});
+test('zero sugar is real; missing fiber or NOVA alone should not falsely trigger overview warning',()=>{
+ const data=productDataStatus({...base,nova:null,protein:0,carbs:0,sugar:0,nutriScore:null});
+ assert.equal(data.summaryNotice,null);
+ assert.ok(data.notes.some(n=>/NOVA-gruppe er ikke oppgitt/.test(n)));
+ assert.equal(data.observedNutrients,6);
+});
+test('clear conflicts are included without replacing displayed source values',()=>{
+ const data=productDataStatus({...base,energy:0,sugar:9,carbs:3,energyKJConflict:true});
+ assert.equal(data.issues.length,3);
+ assert.match(data.issues.join(' '),/Sukkerarter/);
+ assert.match(data.issues.join(' '),/Energien står som 0/);
+ assert.match(data.issues.join(' '),/kcal og kJ/);
+ assert.match(data.summaryNotice,/motstridende/);
+});

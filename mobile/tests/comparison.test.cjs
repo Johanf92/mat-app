@@ -22,7 +22,9 @@ const additiveModule=loadTs('additives');
 const ingredientModule=loadTs('ingredientEvidence',{'./additives':additiveModule});
 const productEvidenceModule=loadTs('productEvidence',{'./additives':additiveModule,'./ingredientEvidence':ingredientModule});
 const ingredientComparisonModule=loadTs('ingredientComparison',{'./ingredientEvidence':ingredientModule});
+const statusModule=loadTs('productDataStatus');
 const comparisonModule=loadTs('comparison',{
+ './productDataStatus':statusModule,
  './catalog':{amount:(n,unit='g')=>n===null?'Ikke oppgitt':n.toLocaleString('nb-NO',{maximumFractionDigits:2})+' '+unit},
  './ingredientEvidence':ingredientModule,
  './ingredientComparison':ingredientComparisonModule,
@@ -74,7 +76,7 @@ test('impossible sugar values warn without inventing ingredient information',()=
  const warnings=comparisonDataWarnings(suspect,b);
  assert.equal(warnings.length,1);
  assert.match(warnings[0],/Produkt A/);
- assert.match(warnings[0],/mer sukkerarter enn karbohydrater/);
+ assert.match(warnings[0],/Sukkerarter er registrert høyere enn karbohydrater/);
  assert.deepEqual(comparisonDataWarnings(a,b),[]);
 });
 
@@ -281,4 +283,16 @@ test('multilingual source fields cannot produce misleading missing-word differen
  assert.deepEqual(ingredientComparisonModule.ingredientMentionDifferences(one,finnish),[]);
  assert.match(comparisonInsight(one,finnish,'ingredients'),/språk/);
  assert.match(comparisonInsight(one,finnish,'ingredients'),/gjetter ikke/);
+});
+
+
+test('comparison highlights conflicting source energy and marks converted kcal as approximate',()=>{
+ const first={...a,energy:0,energyKJConflict:true,protein:4,fat:4,sugar:2,carbs:1};
+ const second={...b,energy:43.3,energyConvertedFromKJ:true};
+ const notes=comparisonDataWarnings(first,second);
+ assert.equal(notes.length,3);
+ assert.ok(notes.every(n=>n.startsWith('Produkt A:')));
+ assert.match(metricAmount(second,'energy','kcal'),/^ca\. 43,3 kcal$/);
+ assert.equal(metricAmount({...a,energy:0,energyConvertedFromKJ:false},'energy','kcal'),'0 kcal');
+ assert.equal(metricAmount({...a,energy:null,energyConvertedFromKJ:true},'energy','kcal'),'Ikke oppgitt');
 });

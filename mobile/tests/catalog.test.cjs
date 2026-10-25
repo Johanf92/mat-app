@@ -156,3 +156,57 @@ test('Nutri-Score parsing only accepts A-E and never infers grades from NOVA or 
  assert.ok(u.searchParams.get('fields').includes('nutriscore_grade'));
  assert.ok(u.searchParams.get('fields').includes('nutrition_grades'));
 });
+
+
+test('kJ-only energy is converted transparently, without overriding explicit kcal including zero',()=>{
+ const fromKJ=normalize({...base,nutriments:{energy_100g:176,proteins_100g:0}});
+ assert.equal(fromKJ.energy,42.1);
+ assert.equal(fromKJ.energyConvertedFromKJ,true);
+ assert.equal(fromKJ.energyKJConflict,false);
+ const authoritative=normalize({...base,nutriments:{'energy-kcal_100g':42,energy_100g:176}});
+ assert.equal(authoritative.energy,42);
+ assert.equal(authoritative.energyConvertedFromKJ,false);
+ assert.equal(authoritative.energyKJConflict,false);
+ const conflict=normalize({...base,nutriments:{'energy-kcal_100g':0,energy_100g:1000}});
+ assert.equal(conflict.energy,0);
+ assert.equal(conflict.energyConvertedFromKJ,false);
+ assert.equal(conflict.energyKJConflict,true);
+ const missing=normalize({...base,nutriments:{energy_100g:'missing','energy-kcal_100g':-1}});
+ assert.equal(missing.energy,null);
+ assert.equal(missing.energyConvertedFromKJ,false);
+});
+test('duplicates of the same barcode prefer a complete consistent record, preserving stable result order',()=>{
+ const code=base.code,other='1234567890123';
+ const first={...base,product_name:'Original',nutriments:{sugars_100g:0}};
+ const weak={...base,product_name:'Only name',code:other};
+ const complete={...base,product_name:'Full record',ingredients_text_no:'Melk, kultur',
+  image_front_url:'https://example.invalid/image.jpg',nutriscore_grade:'b',nova_group:1,
+  nutriments:{'energy-kcal_100g':55,proteins_100g:4,fat_100g:2,carbohydrates_100g:4,sugars_100g:4,salt_100g:0.1}};
+ const duplicate={...complete,code,product_name:'Full record'};
+ const rows=searchResults({hits:[first,weak,duplicate]},DEFAULT_MARKET);
+ assert.deepEqual(rows.map(x=>x.code),[code,other]);
+ assert.equal(rows[0].name,'Full record');
+ assert.equal(rows[0].ingredients,'Melk, kultur');
+ assert.equal(rows[0].nova,1);
+ assert.equal(rows[0].sugar,4);
+ assert.equal(rows[1].name,'Only name');
+ assert.equal(searchResults({hits:[duplicate,first]},DEFAULT_MARKET)[0].name,'Full record');
+});
+test('conflicting complete record never wins only because it appears last, and records are not merged',()=>{
+ const inconsistent={...base,product_name:'Bad numbers',ingredients_text:'Vann, sukker',
+  nutriments:{'energy-kcal_100g':0,proteins_100g:8,fat_100g:4,carbohydrates_100g:1,sugars_100g:30}};
+ const consistent={...base,product_name:'Less complete',
+  nutriments:{proteins_100g:0,carbohydrates_100g:10.6,sugars_100g:10.6}};
+ const product=searchResults({hits:[consistent,inconsistent]},DEFAULT_MARKET)[0];
+ assert.equal(product.name,'Less complete');
+ assert.equal(product.fat,null,'never merge fat from the conflicting record');
+ assert.equal(product.sugar,10.6);
+});
+test('duplicate selection obeys selected country even if another hit has richer data',()=>{
+ const otherMarket={...base,countries_tags:['en:sweden'],ingredients_text:'Melk',nova_group:1,
+  nutriments:{proteins_100g:3,fat_100g:3,carbohydrates_100g:4,sugars_100g:4}};
+ const norway={...base,product_name:'Norway version'};
+ const selected=searchResults({hits:[otherMarket,norway]},DEFAULT_MARKET);
+ assert.equal(selected.length,1);
+ assert.equal(selected[0].name,'Norway version');
+});

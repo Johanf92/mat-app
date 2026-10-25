@@ -18,6 +18,10 @@
 - [x] Separate søk for havregryn registrert som glutenfri og annen havre, uten å love allergen-/cøliakisikkerhet
 - [x] Forklaringer av vanlige funksjonsord i ingredienslister, med Mattilsynet som kilde
 - [x] Synlig oversikt over manglende næringsdata og interne motsetninger i kilden
+- [x] Ingen nullverdier konstrueres for manglende næringsdata; viktig mangel eller tydelig motstrid vises nøkternt
+- [x] Energi fra kilojoule omregnes til omtrentlige kcal bare når direkte kcal mangler, med kildeforklaring
+- [x] Sterke motsetninger mellom oppgitte kcal og kJ varsles uten at kildens kcal blir endret
+- [x] Søkeduplikater med samme strekkode velger én best dokumentert, konsistent registrering fremfor siste treff
 - [x] Nutri-Score som frivillig, separat og kildebasert ernæringsprofil ved siden av NOVA, uten lokal beregning
 - [x] Kort faktabasert oppsummering på produktsiden
 - [x] Forsiktig alternativmatching for grovbrød, loff, rugknekkebrød, cornflakes, jordbærsyltetøy og tydelig merket tomatsuppe

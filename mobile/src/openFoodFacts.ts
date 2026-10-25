@@ -17,7 +17,12 @@ export type FoodProduct = {
   ingredients?: string; ingredientsOriginal?: string; ingredientLanguage: string;
   nova: NovaGroup | null; nutriScore: NutriScoreGrade | null; protein: number | null; sugar: number | null;
   fat: number | null; carbs: number | null; fiber: number | null; salt: number | null;
-  energy: number | null; additives: string[]; allergens: string[];
+  energy: number | null;
+  /** True only when kcal was absent and we converted OFF's energy_100g (kJ). */
+  energyConvertedFromKJ?: boolean;
+  /** The two explicitly registered kcal/kJ values materially disagree; keep both untouched. */
+  energyKJConflict?: boolean;
+  additives: string[]; allergens: string[];
   countries: string[]; categories: string[]; modifiedAt: number | null;
 };
 type Raw = Record<string, unknown>;
@@ -45,6 +50,19 @@ export function normalize(value: unknown): FoodProduct | null {
   const ingredientLanguage = ingredientKey === 'ingredients_text_nb' || ingredientKey === 'ingredients_text_no'
     ? 'no' : ingredientKey === 'ingredients_text_en' ? 'en' : first(raw.lang) || 'unknown';
   const image = first(raw.image_front_url, raw.image_front_small_url);
+  const directKcal=numeric(n['energy-kcal_100g']);
+  // Open Food Facts' energy_100g is standardized to kJ. Converting that
+  // explicitly reported value is a unit conversion, not a nutrition estimate.
+  // Never replace an explicitly reported 0 kcal, and don't silently reconcile
+  // contradictory source values.
+  const energyKJ=numeric(n.energy_100g);
+  const energyConvertedFromKJ=directKcal===null && energyKJ!==null;
+  const energy=directKcal!==null?directKcal
+    :energyKJ!==null?Math.round((energyKJ/4.184)*10)/10:null;
+  const discrepancy=directKcal!==null&&energyKJ!==null
+    ?Math.abs(directKcal-energyKJ/4.184):0;
+  const energyKJConflict=directKcal!==null&&energyKJ!==null
+    &&discrepancy>Math.max(20,Math.max(directKcal,energyKJ/4.184)*0.35);
   return {
     code, name: first(raw.product_name_nb, raw.product_name_no, raw.product_name, raw.product_name_en) || 'Produktnavn mangler',
     brand: first(raw.brands) || 'Merke ikke oppgitt', image: /^https:\/\//.test(image) ? image : undefined,
@@ -57,7 +75,8 @@ export function normalize(value: unknown): FoodProduct | null {
     nutriScore: parseNutriScore(raw.nutriscore_grade ?? raw.nutrition_grades ?? raw.nutrition_grade_fr),
     protein: numeric(n.proteins_100g), sugar: numeric(n.sugars_100g), fat: numeric(n.fat_100g),
     carbs: numeric(n.carbohydrates_100g), fiber: numeric(n.fiber_100g), salt: numeric(n.salt_100g),
-    energy: numeric(n['energy-kcal_100g']), additives: tags(raw.additives_tags), allergens: tags(raw.allergens_tags),
+    energy, energyConvertedFromKJ, energyKJConflict,
+    additives: tags(raw.additives_tags), allergens: tags(raw.allergens_tags),
     countries: tags(raw.countries_tags), categories: tags(raw.categories_tags), modifiedAt: numeric(raw.last_modified_t),
   };
 }
@@ -127,12 +146,39 @@ async function getJson(url: string, kind: 'search' | 'product', signal?: AbortSi
     signal?.removeEventListener('abort', abort);
   }
 }
+/**
+ * A barcode can appear multiple times in an index response. Use one complete
+ * source record, never a synthetic combination of old and new field values.
+ * Prefer documentation and internally consistent nutrition, not the last hit,
+ * Nutri-Score grade, NOVA number or a particular dietary outcome.
+ */
+function searchRecordDocumentation(p:FoodProduct):number {
+ const available=[p.energy,p.protein,p.fat,p.carbs,p.sugar,p.fiber,p.salt]
+   .filter(v=>v!==null).length;
+ const contradictions=(p.sugar!==null&&p.carbs!==null&&p.sugar>p.carbs+0.1?1:0)
+   +(p.energy===0&&[p.protein,p.fat,p.carbs].some(x=>x!==null&&x>=1)?1:0)
+   +(p.energyKJConflict?1:0);
+ return available*2+(p.ingredients?.trim()?5:0)
+   +(p.nova!==null?2:0)+(p.nutriScore!==null?1:0)
+   +(p.image?2:0)
+   +(p.name!=='Produktnavn mangler'?2:0)
+   +(p.brand!=='Merke ikke oppgitt'?1:0)
+   -contradictions*40;
+}
 export function searchResults(data: unknown, market: Market): FoodProduct[] {
  const payload = record(data);
  if (!Array.isArray(payload.hits)) throw new Error('Søketjenesten ga et uventet svar. Prøv igjen senere.');
  const results = payload.hits.map(normalize).filter((p): p is FoodProduct => p !== null);
- // The search index can contain stale country data. Never silently ignore the market choice.
- return [...new Map(results.filter(p => !market.tag || p.countries.includes(market.tag)).map(p => [p.code, p])).values()];
+ // A stale search hit never overrides the selected market. Preserve the order
+ // of first-seen barcodes, while retaining the best-documented entire record.
+ const deduplicated=new Map<string,FoodProduct>();
+ for(const p of results){
+  if(market.tag && !p.countries.includes(market.tag))continue;
+  const prior=deduplicated.get(p.code);
+  if(!prior||searchRecordDocumentation(p)>searchRecordDocumentation(prior))
+    deduplicated.set(p.code,p);
+ }
+ return [...deduplicated.values()];
 }
 export async function searchProducts(query: string, market: Market = DEFAULT_MARKET, signal?: AbortSignal): Promise<FoodProduct[]> {
  if (safeSearchText(query).length < 2) return [];
