@@ -30,7 +30,7 @@ const entries: Record<string, Omit<AdditiveInfo, 'id' | 'source'> & { source?: s
 /** Show the actual authority behind the linked explanation, not a hard-coded UK label. */
 export function additiveSourceLabel(url: string): string {
   if (url.startsWith('https://www.mattilsynet.no/')) return 'Kilde: Mattilsynet';
-  if (url.startsWith('https://www.efsa.europa.eu/')) return 'Kilde: EFSA';
+  if (url.startsWith('https://www.efsa.europa.eu/') || url.startsWith('https://doi.org/10.2903/j.efsa.')) return 'Kilde: EFSA';
   if (url.startsWith('https://www.gov.uk/')) return 'Kilde: britisk myndighetsoversikt';
   return 'Les om tilsetningsstoffet hos kilden';
 }
