@@ -142,6 +142,8 @@ test('ambiguous Greek yoghurt is not automatically labelled naturell', () => {
  assert.equal(productProfile(ambiguous),null);
  assert.equal(productProfile(sweetened),null);
  assert.equal(productProfile(unflavoured).kind,'greek-plain');
+ const norwegianMilk=next('1111111100026',{name:'Gresk yoghurt',brand:'Local',ingredients:'Pasteurisert kumelk, melkesyrekultur'});
+ assert.equal(productProfile(norwegianMilk).kind,'greek-plain');
  assert.equal(productProfile(skyr),null);
  assert.deepEqual(new Set(relevantAlternatives(source,[ambiguous,sweetened,unflavoured,lactoseFree,skyr],market).map(p=>p.code)),
   new Set([unflavoured.code,lactoseFree.code]));
