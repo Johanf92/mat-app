@@ -143,8 +143,15 @@ function brandFamily(p: FoodProduct): string | null {
 function variantKey(p: FoodProduct, kind: ProductKind): string {
   const brand = brandFamily(p);
   if (!brand) return identity(p);
-  if (kind === 'cola-regular' || kind === 'cola-sugar-free') {
-    return kind + '|' + brand;
+  if (kind === 'cola-regular') return kind + '|' + brand;
+  if (kind === 'cola-sugar-free') {
+    // Light and Zero are both sugar-free, but their formulations can differ.
+    // Only collapse package-size duplicates of the *same* named variant.
+    const name = fold(p.name);
+    const variant = /\b(light|diet|lite)\b/.test(name) ? 'light'
+      : /\bzero\b/.test(name) ? 'zero'
+      : /\bmax\b/.test(name) ? 'max' : 'unspecified';
+    return kind + '|' + brand + '|' + variant;
   }
   if (kind === 'greek-plain' || kind === 'plain-yogurt') {
     const metrics = [p.energy, p.protein, p.fat, p.carbs, p.sugar];
