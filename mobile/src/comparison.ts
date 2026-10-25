@@ -103,27 +103,46 @@ export type QuickComparisonFact = {
   detail: string;
 };
 
+/**
+ * The overview prefers visible differences in *recorded values* over unchanged
+ * classifications or tiny numeric variations. These display cutoffs are not
+ * nutritional or medical significance thresholds.
+ */
+function overviewNutritionFacts(a: FoodProduct, b: FoodProduct, base: string): QuickComparisonFact[] {
+  const specs: {key: MetricKey; label: string; unit: string; displayCutoff: number}[] = [
+    {key:'sugar',label:'Sukkerarter',unit:'g',displayCutoff:2},
+    {key:'energy',label:'Energi',unit:'kcal',displayCutoff:10},
+    {key:'fat',label:'Fett',unit:'g',displayCutoff:0.8},
+    {key:'protein',label:'Protein',unit:'g',displayCutoff:1},
+  ];
+  return specs.flatMap(({key,label,unit,displayCutoff})=>{
+    const x=a[key],y=b[key];
+    if(x===null||y===null||Math.abs(x-y)<displayCutoff)return [];
+    const delta=Math.abs(x-y);
+    const qualifier=key==='sugar'
+      ? ' Sukkerarter kan også forekomme naturlig; tallet sier ikke alene hvor mye som er tilsatt.'
+      : '';
+    return [{
+      key,label,
+      summary:'A: '+amount(x,unit)+' · B: '+amount(y,unit)+' per oppgitt 100 g / 100 ml.',
+      detail:'Forskjell i registrert '+label.toLowerCase()+': '+amount(delta,unit)+'.'
+        +qualifier+' '+base,
+    }];
+  });
+}
+
 export function quickComparisonFacts(a: FoodProduct, b: FoodProduct): QuickComparisonFact[] {
   const facts: QuickComparisonFact[] = [];
   const base = 'Tallene gjelder per 100 g / 100 ml, slik kilden oppgir dem. Kontroller at varene har samme målegrunnlag.';
+  const nutrition = overviewNutritionFacts(a,b,base);
+  // Cap the numerical headlines at two. Leave room for other types of source
+  // information, rather than implying a health ranking through more numbers.
+  facts.push(...nutrition.slice(0,2));
   const sugarKnown = a.sugar !== null && b.sugar !== null;
-  if (sugarKnown) {
-    const delta = Math.abs(a.sugar! - b.sugar!);
-    facts.push({
-      key: 'sugar',
-      label: 'Sukkerarter',
-      summary: delta < 0.005
-        ? 'Samme registrerte mengde: ' + amount(a.sugar!) + ' per 100 g / 100 ml.'
-        : 'A: ' + amount(a.sugar!) + ' · B: ' + amount(b.sugar!) + ' per 100 g / 100 ml.',
-      detail: (delta < 0.005
-        ? 'Kilden oppgir samme mengde sukkerarter for begge produktene.'
-        : 'Forskjell i registrerte sukkerarter: ' + amount(delta) + '.')
-        + ' Sukkerarter kan også forekomme naturlig; tallet viser ikke alene hvor mye som er tilsatt. ' + base,
-    });
-  }
+
   const evidence = additiveEvidenceRows(a, b);
   // Prioritize a code actually written in an ingredient list and documented
-  // for only one side, before differences in the completeness of the source.
+  // for only one side, before differences in source completeness.
   const oneSided = evidence.find(row =>
     row.code !== 'E290' &&
     ((row.aEvidence === 'not-recorded' && (row.bEvidence === 'ingredients' || row.bEvidence === 'both'))
@@ -131,69 +150,82 @@ export function quickComparisonFacts(a: FoodProduct, b: FoodProduct): QuickCompa
   );
   const otherDifference = evidence.find(row => row.differs && row.code !== 'E290');
   const highlighted = oneSided ?? otherDifference;
-  if (highlighted) {
+  const additiveFact: QuickComparisonFact | null = highlighted ? (() => {
     const onlyA = highlighted.aEvidence !== 'not-recorded' && highlighted.bEvidence === 'not-recorded';
     const onlyB = highlighted.bEvidence !== 'not-recorded' && highlighted.aEvidence === 'not-recorded';
     const summary = onlyA || onlyB
       ? 'Oppført for ' + (onlyA ? 'A' : 'B') + ', uten oppføring for ' + (onlyA ? 'B' : 'A') + ' i de undersøkte feltene.'
       : 'Oppført for begge, men registrert i ulike kildefelt.';
-    facts.push({
+    return {
       key: 'additive-' + highlighted.code,
       label: highlighted.displayCode + ' · ' + highlighted.name,
       summary,
       detail: highlighted.role + '. Produkt A: ' + additiveEvidenceLabel(highlighted.aEvidence)
         + '. Produkt B: ' + additiveEvidenceLabel(highlighted.bEvidence)
         + '. Manglende oppføring dokumenterer ikke at stoffet er fraværende. Den registrerte mengden er ikke kjent.',
+    };
+  })() : null;
+
+  // When no larger numeric difference is registered, comparing equal sugar
+  // values can itself be useful (e.g. ordinary cola from different brands).
+  if (facts.length === 0 && sugarKnown) {
+    const delta=Math.abs(a.sugar!-b.sugar!);
+    facts.push({
+      key:'sugar',label:'Sukkerarter',
+      summary:delta<0.005
+        ? 'Samme registrerte mengde: '+amount(a.sugar!)+' per 100 g / 100 ml.'
+        : 'A: '+amount(a.sugar!)+' · B: '+amount(b.sugar!)+' per 100 g / 100 ml.',
+      detail:(delta<0.005
+        ? 'Kilden oppgir samme mengde sukkerarter for begge produktene.'
+        : 'Forskjell i registrerte sukkerarter: '+amount(delta)+'.')
+        +' Sukkerarter kan også forekomme naturlig; tallet viser ikke alene hvor mye som er tilsatt. '+base,
     });
   }
+  if(additiveFact&&facts.length<3)facts.push(additiveFact);
   // NOVA is a processing classification, not an indicator of health or safety.
-  if (a.nova !== null && b.nova !== null) {
-    facts.push({
-      key: 'nova',
-      label: 'Bearbeidingsgrad',
-      summary: a.nova === b.nova
-        ? 'Begge er registrert i NOVA ' + a.nova + '.'
-        : 'A: NOVA ' + a.nova + ' · B: NOVA ' + b.nova + '.',
-      detail: a.nova === b.nova
-        ? 'Begge har samme registrerte NOVA-gruppe. Dette viser ikke at ingrediensene eller oppskriftene er identiske.'
-        : 'Kilden oppgir ulik NOVA-gruppe. Vi kan ikke utlede årsaken av næringstallene alene.'
-          + ' NOVA beskriver bearbeiding, ikke hva som er sunnest.',
-    });
-  } else if (a.nova !== b.nova) {
-    facts.push({
-      key: 'nova-unknown', label: 'Bearbeidingsgrad',
-      summary: 'NOVA mangler for minst ett av produktene.',
-      detail: 'Vi anslår ikke bearbeidingsgrad ut fra navn eller næringsinnhold. Manglende NOVA er ikke en egen klasse.',
-    });
-  }
-  if (facts.length < 3) {
-    const aIngredients = a.ingredients ? displayIngredientText(a.ingredients).trim() : '';
-    const bIngredients = b.ingredients ? displayIngredientText(b.ingredients).trim() : '';
-    if (aIngredients && bIngredients) {
+  if(facts.length<3){
+    if (a.nova !== null && b.nova !== null) {
       facts.push({
-        key: 'ingredients', label: 'Ingredienslister',
-        summary: aIngredients.toLowerCase() === bIngredients.toLowerCase()
-          ? 'Listene har lik registrert ordlyd.'
-          : 'Listene har forskjellig registrert ordlyd.',
-        detail: 'Ordlyden beviser ikke i seg selv like eller ulike oppskrifter.'
-          + ' Se hele kildeteksten under «Ingredienser» for å kontrollere det som faktisk er oppført.',
+        key: 'nova',label:'Bearbeidingsgrad',
+        summary:a.nova===b.nova
+          ? 'Begge er registrert i NOVA '+a.nova+'.'
+          : 'A: NOVA '+a.nova+' · B: NOVA '+b.nova+'.',
+        detail:a.nova===b.nova
+          ? 'Begge har samme registrerte NOVA-gruppe. Dette viser ikke at ingrediensene eller oppskriftene er identiske.'
+          : 'Kilden oppgir ulik NOVA-gruppe. Vi kan ikke utlede årsaken av næringstallene alene. NOVA beskriver bearbeiding, ikke hva som er sunnest.',
       });
-    } else {
+    }else if(a.nova!==b.nova){
       facts.push({
-        key: 'missing-ingredients', label: 'Ingrediensdata',
-        summary: 'Ingredienslisten mangler for minst ett produkt.',
-        detail: 'Vi kan ikke fastslå forskjeller i ingredienser når en liste er ufullstendig eller mangler.',
+        key:'nova-unknown',label:'Bearbeidingsgrad',
+        summary:'NOVA mangler for minst ett av produktene.',
+        detail:'Vi anslår ikke bearbeidingsgrad ut fra navn eller næringsinnhold. Manglende NOVA er ikke en egen klasse.',
       });
     }
   }
-  if (facts.length === 0) {
-    facts.push({
-      key: 'limited-data', label: 'Datagrunnlag',
-      summary: 'For lite sammenlignbar informasjon i de registrerte feltene.',
-      detail: 'Kontroller ingredienslisten og næringsdeklarasjonen på emballasjen. Manglende informasjon betyr ikke null.',
-    });
+  if(facts.length<3){
+    const ai=a.ingredients?displayIngredientText(a.ingredients).trim():'';
+    const bi=b.ingredients?displayIngredientText(b.ingredients).trim():'';
+    if(ai&&bi){
+      facts.push({
+        key:'ingredients',label:'Ingredienslister',
+        summary:ai.toLowerCase()===bi.toLowerCase()
+          ?'Listene har lik registrert ordlyd.':'Listene har forskjellig registrert ordlyd.',
+        detail:'Ordlyden beviser ikke i seg selv like eller ulike oppskrifter. Se hele kildeteksten under «Ingredienser» for å kontrollere det som faktisk er oppført.',
+      });
+    }else{
+      facts.push({
+        key:'missing-ingredients',label:'Ingrediensdata',
+        summary:'Ingredienslisten mangler for minst ett produkt.',
+        detail:'Vi kan ikke fastslå forskjeller i ingredienser når en liste er ufullstendig eller mangler.',
+      });
+    }
   }
-  return facts.slice(0, 3);
+  if(facts.length===0)facts.push({
+    key:'limited-data',label:'Datagrunnlag',
+    summary:'For lite sammenlignbar informasjon i de registrerte feltene.',
+    detail:'Kontroller ingredienslisten og næringsdeklarasjonen på emballasjen. Manglende informasjon betyr ikke null.',
+  });
+  return facts.slice(0,3);
 }
 
 export function metricAmount(product: FoodProduct, metric: MetricKey, unit = 'g'): string {
@@ -215,6 +247,7 @@ export function comparisonInsight(a: FoodProduct, b: FoodProduct, focus: Compare
   if (x === null || y === null) return 'Opplysninger om ' + (focus === 'protein' ? 'protein' : 'sukkerarter') + ' mangler for minst ett produkt.';
   const difference = Math.round(Math.abs(x - y) * 100) / 100;
   if (difference < 0.005) return 'Begge produktene har samme registrerte mengde ' + (focus === 'protein' ? 'protein' : 'sukkerarter') + ' per 100 g / 100 ml.';
+  if (focus === 'protein' && difference < 0.5) return 'Liten forskjell i registrert proteinmengde: A '+amount(x)+' og B '+amount(y)+' per 100 g / 100 ml (slik kilden oppgir). Tallene kan være avrundet; denne forskjellen alene sier lite om varene.';
   const higher = x > y ? a.name : b.name;
   const qualifier = focus === 'sugar' ? ' Dette inkluderer naturlig forekommende sukker og sier ikke alene noe om tilsatt sukker.' : '';
   return higher + ' har ' + amount(difference) + ' mer ' + (focus === 'protein' ? 'protein' : 'sukkerarter') + ' per 100 g / 100 ml (slik kilden oppgir).' + qualifier;
