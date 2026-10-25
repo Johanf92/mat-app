@@ -150,8 +150,8 @@ test('code normalization ignores case but does not collapse parent and variant w
 
 
 test('quick overview prioritizes registered sugar, ingredient-backed E211 and NOVA',()=>{
- const cola={...a,name:'Coca-Cola Original Taste',nova:4,sugar:10.6,carbs:10.6,ingredients:'Kullsyreholdig vann, sukker, E150d, E338',additives:['en:e150d','en:e338']};
- const grans={...b,name:'Grans Cola',nova:4,sugar:10.6,carbs:10.6,ingredients:'Vann, sukker, kullsyre, E338, E150d, E211',additives:['en:e211','en:e290','en:e338']};
+ const cola={...a,name:'Coca-Cola Original Taste',nova:4,energy:42,protein:0,fat:0,sugar:10.6,carbs:10.6,ingredients:'Kullsyreholdig vann, sukker, E150d, E338',additives:['en:e150d','en:e338']};
+ const grans={...b,name:'Grans Cola',nova:4,energy:42,protein:0,fat:0,sugar:10.6,carbs:10.6,ingredients:'Vann, sukker, kullsyre, E338, E150d, E211',additives:['en:e211','en:e290','en:e338']};
  const facts=quickComparisonFacts(cola,grans);
  assert.deepEqual(facts.map(x=>x.key),['sugar','additive-E211','nova']);
  assert.match(facts[0].summary,/10,6 g/);
@@ -177,4 +177,39 @@ test('quick overview does not turn E290 field-only difference into a meaningful 
  const second={...b,sugar:4,nova:4,additives:['en:e290'],ingredients:'Kullsyre, sukker'};
  const facts=quickComparisonFacts(first,second);
  assert.ok(!facts.some(x=>x.key.includes('E290')));
+});
+
+test('plain kefir overview highlights energy and fat before small sugar difference',()=>{
+ const tine={...a,name:'Kefir',nova:1,energy:57,protein:3.3,fat:3,carbs:4.2,sugar:4.2,salt:0.1,ingredients:'Melk, kefirkultur',additives:[]};
+ const q={...tine,name:'Kefir Naturell',energy:46,protein:3.4,fat:2,carbs:3.6,sugar:3.6,ingredients:'Lettmelk, kefirkultur'};
+ const quick=quickComparisonFacts(tine,q);
+ assert.deepEqual(quick.map(f=>f.key),['energy','fat','nova']);
+ assert.match(quick[0].summary,/57 kcal/);
+ assert.match(quick[0].summary,/46 kcal/);
+ assert.match(quick[1].summary,/3 g/);
+ assert.match(quick[1].summary,/2 g/);
+ assert.match(quick[2].summary,/NOVA 1/);
+ const protein=comparisonInsight(tine,q,'protein');
+ assert.match(protein,/Liten forskjell/);
+ assert.match(protein,/3,3 g/);
+ assert.match(protein,/3,4 g/);
+ assert.doesNotMatch(protein,/mer protein|sunnere/);
+});
+
+test('sugar-free cola remains compared without declaring a healthier winner',()=>{
+ const original={...a,name:'Coca-Cola Original',nova:4,energy:42,protein:0,fat:0,sugar:10.6,carbs:10.6,ingredients:'Vann, sukker, E338',additives:['en:e338']};
+ const zero={...original,name:'Coca-Cola Zero',energy:0.3,sugar:0,carbs:0,ingredients:'Vann, E338, E950',additives:['en:e338','en:e950']};
+ const facts=quickComparisonFacts(original,zero);
+ assert.deepEqual(facts.map(f=>f.key),['sugar','energy','additive-E950']);
+ assert.match(facts[0].summary,/10,6 g/);
+ assert.match(facts[1].summary,/42 kcal/);
+ assert.match(facts[2].detail,/Manglende oppføring dokumenterer ikke/);
+ assert.doesNotMatch(facts.map(f=>f.summary+' '+f.detail).join(' '),/sunnere|sunnest|anbefalt/);
+});
+
+test('missing nutrient values never become claimed differences in headline',()=>{
+ const first={...a,energy:null,fat:null,protein:null,sugar:null};
+ const second={...b,energy:46,fat:2,protein:3.4,sugar:3.6};
+ const facts=quickComparisonFacts(first,second);
+ assert.ok(!facts.some(f=>['energy','fat','protein','sugar'].includes(f.key)));
 });
