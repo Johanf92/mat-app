@@ -1,9 +1,144 @@
-import { Link } from 'expo-router';
-import { SafeAreaView, ScrollView, Text, View, StyleSheet } from 'react-native';
-import { products } from '../src/products';
+import { useEffect, useRef, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ActivityIndicator, Image, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { type FoodProduct, getProduct, searchProducts } from '../src/openFoodFacts';
+import { useMarket } from '../src/MarketContext';
+import { type CompareFocus, COMPARE_OPTIONS, METRICS, comparisonInsight, metricAmount } from '../src/comparison';
+import { productProfile } from '../src/alternatives';
+import { summarizeAdditives } from '../src/additives';
+import { colors, NovaBadge, SourceLink } from '../src/ui';
+
 export default function Compare() {
- const [a,b]=products;
- const rows:[string,string,string][]=[['NOVA',String(a.nova),String(b.nova)],['Protein / 100 g',a.protein+' g',b.protein+' g'],['Sukker / 100 g',a.sugar+' g',b.sugar+' g'],['Fiber / 100 g',a.fiber+' g',b.fiber+' g'],['Salt / 100 g',a.salt+' g',b.salt+' g']];
- return <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.page}><Link href="/" style={s.link}>← Tilbake</Link><Text style={s.title}>Sammenlign matvarer</Text><Text style={s.note}>Fiktive produkter og verdier – kun demonstrasjon.</Text><View style={s.row}><Text style={s.head}>{a.name}</Text><Text style={s.head}>{b.name}</Text></View>{rows.map(([label,left,right])=><View key={label} style={s.card}><Text style={s.note}>{label}</Text><View style={s.row}><Text style={s.value}>{left}</Text><Text style={s.value}>{right}</Text></View></View>)}<Text style={s.note}>NOVA og næringsverdier er informasjon, ikke en automatisk fasit.</Text></ScrollView></SafeAreaView>;
+ const router=useRouter();
+ const params=useLocalSearchParams<{left?:string;right?:string}>();
+ const leftCode=Array.isArray(params.left)?params.left[0]:params.left;
+ const rightCode=Array.isArray(params.right)?params.right[0]:params.right;
+ const {market}=useMarket();
+ const [left,setLeft]=useState<FoodProduct|null>(null);
+ const [right,setRight]=useState<FoodProduct|null>(null);
+ const [loading,setLoading]=useState(false);
+ const [error,setError]=useState('');
+ const [query,setQuery]=useState('');
+ const [results,setResults]=useState<FoodProduct[]>([]);
+ const [searching,setSearching]=useState(false);
+ const [searched,setSearched]=useState(false);
+ const [searchError,setSearchError]=useState('');
+ const [focus,setFocus]=useState<CompareFocus>('processing');
+ const [showIngredients,setShowIngredients]=useState(false);
+ const searchController=useRef<AbortController|null>(null);
+ useEffect(()=>{
+   const controller=new AbortController();
+   setError('');setLoading(true);setLeft(null);setRight(null);
+   if(!leftCode){setError('Velg et produkt før du sammenligner.');setLoading(false);return ()=>controller.abort();}
+   Promise.all([getProduct(leftCode,controller.signal),rightCode?getProduct(rightCode,controller.signal):Promise.resolve(null)])
+    .then(([a,b])=>{if(controller.signal.aborted)return;setLeft(a);setRight(b);
+     if(!a)setError('Fant ikke det første produktet.');
+     else if(rightCode&&!b)setError('Fant ikke produktet som skal sammenlignes.');
+    }).catch(()=>{if(!controller.signal.aborted)setError('Kunne ikke hente produktdata. Prøv igjen.');})
+    .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
+   return ()=>controller.abort();
+ },[leftCode,rightCode]);
+ useEffect(()=>()=>searchController.current?.abort(),[]);
+ async function searchSecond() {
+   const q=query.trim();if(q.length<2||searching)return;
+   searchController.current?.abort();
+   const controller=new AbortController();searchController.current=controller;
+   setSearching(true);setSearched(true);setSearchError('');setResults([]);Keyboard.dismiss();
+   try{
+     const barcode=q.replace(/\s/g,'');
+     const data=/^\d{8,14}$/.test(barcode)?[await getProduct(barcode,controller.signal)].filter((x):x is FoodProduct=>x!==null):await searchProducts(q,market,controller.signal);
+     if(!controller.signal.aborted)setResults(data.filter(p=>p.code!==leftCode));
+   }catch{if(!controller.signal.aborted)setSearchError('Kunne ikke søke akkurat nå. Prøv igjen.');}
+   finally{if(!controller.signal.aborted)setSearching(false);}
+ }
+ function choose(p:FoodProduct) {
+   searchController.current?.abort();setResults([]);setSearched(false);setQuery('');setShowIngredients(false);
+   router.setParams({right:p.code});
+ }
+ const sameType=left&&right&&productProfile(left)?.kind===productProfile(right)?.kind&&productProfile(left)!==null;
+ return <SafeAreaView style={s.safe} edges={['top','bottom','left','right']}>
+  <View style={s.toolbar}><Pressable accessibilityRole="button" onPress={()=>router.canGoBack()?router.back():router.replace('/')} style={s.backButton}><Text style={s.back}>← Tilbake</Text></Pressable></View>
+  <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.page}>
+    <Text accessibilityRole="header" style={s.title}>Sammenlign matvarer</Text>
+    <Text style={s.note}>Faktiske registrerte verdier fra Open Food Facts. Ingen automatisk vinner.</Text>
+    {loading&&<ActivityIndicator color={colors.green} size="large"/>}
+    {!!error&&<Text accessibilityRole="alert" style={s.warning}>{error}</Text>}
+    {left&&!rightCode&&!loading&&<View style={s.pick}>
+      <Text style={s.section}>Velg produkt nummer to</Text>
+      <Text style={s.note}>Sammenlignes med: {left.name} ({left.brand})</Text>
+      <TextInput style={s.input} accessibilityLabel="Søk etter produkt eller strekkode" placeholder="Søk produkt, merke eller strekkode" value={query}
+        onChangeText={v=>{setQuery(v);setResults([]);setSearched(false);setSearchError('');}}
+        onSubmitEditing={()=>{void searchSecond();}} returnKeyType="search" autoCorrect={false}/>
+      <Pressable accessibilityRole="button" style={[s.button,(searching||query.trim().length<2)&&s.disabled]} disabled={searching||query.trim().length<2} onPress={()=>{void searchSecond();}}><Text style={s.buttonText}>Søk i {market.name}</Text></Pressable>
+      {searching&&<ActivityIndicator color={colors.green}/>}
+      {!!searchError&&<Text style={s.warning}>{searchError}</Text>}
+      {searched&&!searching&&!searchError&&!results.length&&<Text style={s.note}>Ingen treff. Prøv et annet søkeord eller land.</Text>}
+      {results.map(p=><Pressable key={p.code} accessibilityRole="button" onPress={()=>choose(p)} style={s.result}>
+        {p.image?<Image source={{uri:p.image}} style={s.resultImage} resizeMode="contain"/>:<View style={s.resultImage}/>}
+        <View style={{flex:1,gap:4}}><Text style={s.resultName}>{p.name}</Text><Text style={s.note}>{p.brand}</Text><NovaBadge group={p.nova} compact/></View>
+        <Text style={s.arrow}>›</Text>
+      </Pressable>)}
+      <Text style={s.note}>Tekstsøk filtreres etter valgt land. Strekkoder slås opp globalt. Registrering betyr ikke at varen finnes i butikk.</Text>
+    </View>}
+    {left&&right&&!loading&&<>
+      <View style={s.productGrid}>
+       {[left,right].map((p,index)=><View key={p.code} style={s.productCard}>
+        {p.image?<Image source={{uri:p.image}} style={s.productImage} resizeMode="contain"/>:<View style={s.productImage}/>}
+        <Text style={s.columnCaption}>PRODUKT {index===0?'A':'B'}</Text>
+        <Text numberOfLines={3} style={s.productName}>{p.name}</Text><Text numberOfLines={2} style={s.note}>{p.brand}</Text>
+        <NovaBadge group={p.nova} compact/>
+       </View>)}
+      </View>
+      <Pressable accessibilityRole="button" style={s.change} onPress={()=>{setRight(null);router.setParams({right:''});}}><Text style={s.changeText}>Endre produkt B →</Text></Pressable>
+      {!sameType&&<Text style={s.warning}>Disse varene er ikke bekreftet som samme produkttype. Sammenligningen kan derfor være mindre relevant.</Text>}
+      <Text style={s.section}>Hva vil du se nærmere på?</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.options}>
+        {COMPARE_OPTIONS.map(o=><Pressable key={o.key} accessibilityRole="button" accessibilityState={{selected:focus===o.key}} style={[s.option,focus===o.key&&s.optionSelected]} onPress={()=>setFocus(o.key)}>
+         <Text style={[s.optionText,focus===o.key&&s.optionTextSelected]}>{o.label}</Text>
+        </Pressable>)}
+      </ScrollView>
+      <View style={s.insight}><Text style={s.insightTitle}>Dette viser dataene</Text><Text style={s.body}>{comparisonInsight(left,right,focus)}</Text></View>
+      <Text style={s.section}>Næringsinnhold</Text>
+      <Text style={s.note}>Per 100 g / 100 ml som oppgitt av kilden. Manglende verdier er ikke null.</Text>
+      <View style={s.tableHeader}><Text style={s.metricLabel}>Egenskap</Text><Text style={s.metricValue}>A</Text><Text style={s.metricValue}>B</Text></View>
+      {METRICS.map(m=><View key={m.key} style={s.tableRow}><Text style={s.metricLabel}>{m.label}</Text><Text style={s.metricValue}>{metricAmount(left,m.key,m.unit)}</Text><Text style={s.metricValue}>{metricAmount(right,m.key,m.unit)}</Text></View>)}
+      <Text style={s.section}>Ingredienser</Text>
+      {[left,right].map((p,index)=><View key={p.code+'ingredients'} style={s.ingredients}><Text style={s.resultName}>Produkt {index===0?'A':'B'} · {p.name}</Text>
+       <Text style={s.body} numberOfLines={showIngredients?undefined:5}>{p.ingredients||'Ingredienslisten er ikke oppgitt.'}</Text>
+      </View>)}
+      <Pressable accessibilityRole="button" onPress={()=>setShowIngredients(!showIngredients)} style={s.change}><Text style={s.changeText}>{showIngredients?'Vis mindre':'Vis hele ingredienslistene'}</Text></Pressable>
+      <Text style={s.section}>Registrerte tilsetningsstoffer</Text>
+      {[left,right].map((p,index)=>{const info=summarizeAdditives(p.additives);return <View key={p.code+'additives'} style={s.additiveBox}>
+       <Text style={s.resultName}>Produkt {index===0?'A':'B'} · {p.name}</Text>
+       <Text style={s.body}>{info.rawTags.length?info.items.map(x=>x.id).concat(info.unrecognized).join(', '):'Ikke oppgitt – dette betyr ikke at varen er uten tilsetningsstoffer.'}</Text>
+      </View>})}
+      <Text style={s.warning}>Kildeopplysninger kan være ufullstendige. Kontroller alltid emballasjen ved allergi. NOVA er ikke en samlet helsevurdering.</Text>
+      <SourceLink label="Kilde for produkt A (åpner nettleseren)" url={'https://world.openfoodfacts.org/product/'+left.code}/>
+      <SourceLink label="Kilde for produkt B (åpner nettleseren)" url={'https://world.openfoodfacts.org/product/'+right.code}/>
+    </>}
+  </ScrollView>
+ </SafeAreaView>;
 }
-const s=StyleSheet.create({safe:{flex:1,backgroundColor:'#F8FAF7'},page:{padding:24,gap:16},link:{color:'#26734F',fontSize:16,fontWeight:'700'},title:{fontSize:30,fontWeight:'800',color:'#193328'},note:{fontSize:13,lineHeight:20,color:'#7C7865'},row:{flexDirection:'row',gap:12},head:{flex:1,fontSize:16,fontWeight:'800',color:'#285E40'},card:{padding:16,borderRadius:14,backgroundColor:'white',gap:10},value:{flex:1,fontSize:18,fontWeight:'700',color:'#193328'}});
+const s=StyleSheet.create({
+ safe:{flex:1,backgroundColor:colors.page},toolbar:{paddingHorizontal:18,borderBottomWidth:1,borderBottomColor:colors.line},
+ backButton:{minHeight:48,justifyContent:'center'},back:{fontSize:16,fontWeight:'700',color:colors.green},
+ page:{padding:22,paddingBottom:55,gap:15},title:{fontSize:29,fontWeight:'800',color:colors.ink},
+ note:{fontSize:12,lineHeight:19,color:colors.muted},body:{fontSize:15,lineHeight:23,color:colors.ink},section:{fontSize:19,fontWeight:'800',color:colors.ink,marginTop:6},
+ warning:{fontSize:13,lineHeight:21,color:'#80551C'},pick:{gap:13,backgroundColor:'#EFF5EF',padding:16,borderRadius:18},
+ input:{fontSize:16,backgroundColor:'white',borderRadius:12,padding:14,borderWidth:1,borderColor:colors.line,color:colors.ink},
+ button:{backgroundColor:colors.green,borderRadius:12,padding:15,alignItems:'center',minHeight:48},buttonText:{color:'white',fontSize:15,fontWeight:'700'},
+ disabled:{opacity:0.5},result:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:'white',borderRadius:13,borderColor:colors.line,borderWidth:1,padding:12},
+ resultImage:{width:54,height:62,borderRadius:8,backgroundColor:'#E9EEE9'},resultName:{fontSize:15,fontWeight:'700',color:colors.ink},arrow:{color:colors.green,fontSize:25},
+ productGrid:{flexDirection:'row',gap:12},productCard:{flex:1,backgroundColor:'white',borderColor:colors.line,borderWidth:1,borderRadius:16,padding:12,gap:8,minWidth:0},
+ productImage:{width:'100%',height:95,borderRadius:10,backgroundColor:'#EDF2ED'},columnCaption:{fontSize:11,letterSpacing:0.6,color:colors.muted,fontWeight:'800'},
+ productName:{fontSize:16,fontWeight:'800',color:colors.ink,minHeight:35},change:{minHeight:44,justifyContent:'center',alignSelf:'flex-start'},
+ changeText:{color:colors.green,fontSize:14,fontWeight:'700'},options:{gap:9,paddingRight:16},option:{borderColor:colors.line,borderWidth:1,borderRadius:20,paddingHorizontal:12,paddingVertical:10,backgroundColor:'white'},
+ optionSelected:{borderColor:colors.green,backgroundColor:'#E2F0E5'},optionText:{fontSize:13,fontWeight:'600',color:colors.muted},optionTextSelected:{color:colors.green},
+ insight:{backgroundColor:'#E5F1E7',borderRadius:16,padding:17,gap:9},insightTitle:{fontSize:16,fontWeight:'800',color:colors.ink},
+ tableHeader:{flexDirection:'row',borderBottomColor:colors.line,borderBottomWidth:2,paddingBottom:10},
+ tableRow:{flexDirection:'row',borderBottomColor:colors.line,borderBottomWidth:1,paddingVertical:12,gap:7,alignItems:'center'},
+ metricLabel:{flex:1.35,fontSize:13,color:colors.ink},metricValue:{flex:1,fontSize:13,textAlign:'right',color:colors.ink,fontWeight:'700'},
+ ingredients:{backgroundColor:'white',borderRadius:13,borderColor:colors.line,borderWidth:1,padding:14,gap:10},
+ additiveBox:{backgroundColor:'white',borderRadius:13,borderColor:colors.line,borderWidth:1,padding:14,gap:7}
+});
