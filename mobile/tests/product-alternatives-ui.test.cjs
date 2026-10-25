@@ -46,6 +46,7 @@ function harness({ supported = true, find = async () => [] } = {}) {
     '../../src/additives': { ADDITIVE_GENERAL_SOURCE: '', formatAdditiveCode: x => x, summarizeAdditives: () => ({ title: 'Tilsetningsstoffer', rawTags: [], items: [], unrecognized: [] }) },
     '../../src/alternatives': {
       comparableCategory: () => supported ? 'en:oat-drinks' : null,
+      productProfile: () => supported ? { kind: 'oat-drink', label: 'havredrikker', category: 'en:oat-drinks' } : null,
       findAlternatives: async (p, m) => { calls.push({ product: p, market: m }); return find(p, m); },
     },
   };
