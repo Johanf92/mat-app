@@ -132,7 +132,7 @@ export default function ProductScreen() {
                   </Pressable>
                 </View>
               </View>)}
-              {alternativesRequested && !alternativesLoading && !alternativesError && alternatives.length > 0 && <Text style={styles.caption}>Forslagene er basert på produkttype og tilgjengelige kildedata, ikke på sunnhetsrangering. Kontroller variant, emballasje og tilgjengelighet.</Text>}
+              {alternativesRequested && !alternativesLoading && !alternativesError && alternatives.length > 0 && <Text style={styles.caption}>Treffene kommer fra søkeindeksen og kan ha eldre eller mangelfulle NOVA- og næringstall. Sammenligningen henter oppdaterte produktdata. Forslagene er ikke en sunnhetsrangering.</Text>}
             </> : <Text testID="alternatives-unavailable" style={styles.caption}>Alternativsøk støttes ikke for denne produktkategorien ennå.</Text>}
             <Pressable accessibilityRole="button" testID="manual-compare"
               onPress={() => router.push({ pathname: '/compare', params: { left: p.code } })} style={styles.manualCompare}>
