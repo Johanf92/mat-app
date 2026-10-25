@@ -6,7 +6,8 @@ import { type FoodProduct, getProduct } from '../../src/openFoodFacts';
 import { amount, NOVA, novaInfo, type NovaGroup } from '../../src/catalog';
 import { useMarket } from '../../src/MarketContext';
 import { colors, InfoSheet, SourceLink, NovaBadge } from '../../src/ui';
-import { ADDITIVE_GENERAL_SOURCE, formatAdditiveCode, summarizeAdditives, type AdditiveInfo } from '../../src/additives';
+import { ADDITIVE_GENERAL_SOURCE, additiveSourceLabel, formatAdditiveCode, summarizeAdditives, type AdditiveInfo } from '../../src/additives';
+import { ingredientTerms, type IngredientTermInfo } from '../../src/ingredientTerms';
 import { comparableCategory, findAlternatives, productProfile, candidateNote } from '../../src/alternatives';
 import { displayIngredientText, ingredientCodeNote } from '../../src/ingredientEvidence';
 
@@ -30,6 +31,7 @@ export default function ProductScreen() {
   const [topic, setTopic] = useState<Topic>(null);
   const [fullIngredients, setFullIngredients] = useState(false);
   const [selectedAdditive,setSelectedAdditive]=useState<AdditiveInfo|null>(null);
+  const [selectedTerm,setSelectedTerm]=useState<IngredientTermInfo|null>(null);
   const [alternatives,setAlternatives]=useState<FoodProduct[]>([]);
   const [alternativesLoading,setAlternativesLoading]=useState(false);
   const [alternativesError,setAlternativesError]=useState('');
@@ -43,7 +45,7 @@ export default function ProductScreen() {
   }
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true); setProduct(null); setError(''); setFullIngredients(false); setTopic(null); setAlternatives([]); setAlternativesRequested(false); setSelectedAdditive(null);
+    setLoading(true); setProduct(null); setError(''); setFullIngredients(false); setTopic(null); setAlternatives([]); setAlternativesRequested(false); setSelectedAdditive(null);setSelectedTerm(null);
     getProduct(id ?? '', controller.signal).then(p => {
       if (!controller.signal.aborted) { setProduct(p); if (!p) setError('Produktet finnes ikke i Open Food Facts.'); }
     }).catch(e => {
@@ -81,6 +83,7 @@ export default function ProductScreen() {
           <Accordion key={p.code + '-ingredients'} title="Ingredienser">
             <Text style={styles.caption}>{['no', 'nb'].includes(p.ingredientLanguage) ? 'Tekst registrert i norsk språkfelt.' : 'Tekst fra datakilden. Kan inneholde flere språk; ikke automatisk oversatt.'}</Text>
             <Text style={styles.body} numberOfLines={fullIngredients ? undefined : 5}>{displayIngredientText(p.ingredients) || 'Ingredienslisten er ikke oppgitt.'}</Text>
+            {ingredientTerms(p.ingredients).map(term => <Pressable key={term.id} testID={'ingredient-term-'+term.id} accessibilityRole="button" onPress={() => setSelectedTerm(term)} style={styles.infoButton}><Text style={styles.info}>Hva betyr «{term.name}»? ⓘ</Text></Pressable>)}
             {!!p.ingredients && <Pressable accessibilityRole="button" accessibilityState={{ expanded: fullIngredients }} onPress={() => setFullIngredients(!fullIngredients)} style={styles.infoButton}><Text style={styles.info}>{fullIngredients ? 'Vis mindre' : 'Vis hele teksten'}</Text></Pressable>}
             <Pressable accessibilityRole="button" onPress={() => setTopic('ingredients')} style={styles.infoButton}><Text style={styles.info}>Om ingredienslisten ⓘ</Text></Pressable>
           </Accordion>
@@ -157,8 +160,17 @@ export default function ProductScreen() {
     </ScrollView>
     <InfoSheet visible={selectedAdditive !== null} title={selectedAdditive ? formatAdditiveCode(selectedAdditive.id) + ' · ' + selectedAdditive.name : ''} onClose={() => setSelectedAdditive(null)}>
       <Text style={styles.body}>{selectedAdditive?.description}</Text>
-      <Text style={styles.caption}>Mulig funksjon: {selectedAdditive?.role}. Den konkrete funksjonen i produktet må bekreftes i ingredienslisten. Dette er ikke en individuell sikkerhetsvurdering.</Text>
-      {!!selectedAdditive && <SourceLink label={selectedAdditive.source === ADDITIVE_GENERAL_SOURCE ? 'Generell informasjon om tilsetningsstoffer (EFSA)' : 'E-numre og stoffnavn (Food Standards Agency)'} url={selectedAdditive.source} />}
+      {!!selectedAdditive?.background && <><Text style={styles.modalHeading}>Bakgrunn og bruk</Text><Text style={styles.body}>{selectedAdditive.background}</Text></>}
+      {!!selectedAdditive?.healthContext && <><Text style={styles.modalHeading}>Hva vet vi?</Text><Text style={styles.body}>{selectedAdditive.healthContext}</Text></>}
+      <Text style={styles.caption}>Funksjon: {selectedAdditive?.role}. Hvilken mengde som er brukt i akkurat denne varen er ikke kjent. Dette er ikke en individuell helserisikovurdering.</Text>
+      {!!selectedAdditive && <SourceLink label={additiveSourceLabel(selectedAdditive.source)} url={selectedAdditive.source} />}
+      {!!selectedAdditive?.healthSource && <SourceLink label={additiveSourceLabel(selectedAdditive.healthSource)} url={selectedAdditive.healthSource} />}
+    </InfoSheet>
+    <InfoSheet visible={selectedTerm !== null} title={selectedTerm?.name ?? ''} onClose={() => setSelectedTerm(null)}>
+      <Text style={styles.modalHeading}>{selectedTerm?.category}</Text>
+      <Text style={styles.body}>{selectedTerm?.description}</Text>
+      <Text style={styles.caption}>Forklaring av et ord i ingredienslisten, ikke en vurdering av dette produktets helsefare eller bearbeidingsgrad.</Text>
+      {!!selectedTerm && <SourceLink label="Mattilsynet – aroma og merking" url={selectedTerm.source} />}
     </InfoSheet>
     <InfoSheet visible={topic !== null} title={topic ? titles[topic] : ''} onClose={() => setTopic(null)}>
       {topic === 'nova' && <>
@@ -199,6 +211,7 @@ const styles = StyleSheet.create({
   nutrientValue: { fontSize: 15, lineHeight: 23, color: colors.ink, fontWeight: '600' }, warning: { fontSize: 13, lineHeight: 21, color: '#825617' },
   additiveRow: { flexDirection: 'row', gap: 12, alignItems: 'center', padding: 13, borderWidth: 1, borderColor: colors.line, borderRadius: 12, backgroundColor: 'white' },
   additiveName: { fontSize: 15, fontWeight: '700', color: colors.ink },
+  modalHeading: { fontSize: 16, fontWeight: '800', color: colors.ink },
   alternatives: { gap: 10, paddingVertical: 17, borderTopWidth: 1, borderTopColor: colors.line },
   alternativesTitle: { fontSize: 16, fontWeight: '700', color: colors.ink }, altButtonDisabled: { opacity: 0.5 },
   altButton: { minHeight: 44, borderWidth: 1, borderColor: colors.green, paddingHorizontal: 15, paddingVertical: 11, borderRadius: 12, alignItems: 'center', alignSelf: 'flex-start' },
