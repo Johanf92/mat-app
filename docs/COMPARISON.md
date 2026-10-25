@@ -80,3 +80,25 @@ tolkes som bevis på fravær eller trygghet.
 
 E211 har fått en begrenset, kildebasert forklaring på sin vanlige funksjon
 som konserveringsmiddel. E-nummerlisten er fortsatt ikke fullstendig.
+
+## Utvidet produktdekning – oktober 2026
+
+Automatisk matching støtter nå også naturell kefir, skyr, cottage cheese, melketyper, havregryn, grovbrød, loff, rugknekkebrød, cornflakes, jordbærsyltetøy og eksplisitt merket tomatsuppe som pulver eller serveringsklar vare.
+
+- Skyr og yoghurt sammenlignes ikke automatisk med hverandre.
+- Sukkerholdig og sukkerfri cola holdes adskilt i *automatisk* søk, men kan sammenlignes manuelt.
+- Produkter merket glutenfrie behandles som egne etikettvarianter i relevante kornkategorier; appen verifiserer aldri cøliaki- eller allergisikkerhet.
+- Ukjente oppskrifter, blandingsprodukter og ubestemt tomatsuppe får manuelt valg fremfor løst funderte forslag.
+- Samme produsents åpenbare like varianter med identiske næringsdata forsøkes slått sammen, men ulik oppskrift må ikke skjules av dette.
+
+## Nutri-Score og NOVA
+
+Nutri-Score er en bokstavbasert vurdering av næringsprofilen fra A til E, mens NOVA er en firedelt klassifisering av bearbeiding. Matkontroll viser dem separat: **NOVA har hovedplassen på produktsiden**; eventuell Nutri-Score er en mindre opplysning med forklaring. To produkter kan ha samme NOVA, men forskjellig Nutri-Score, eller omvendt.
+
+Datakilden for bokstaven er Open Food Facts (prioritert felt `nutriscore_grade`, eventuelt eldre `nutrition_grades` hvis hovedfeltet mangler). Bare bokstavene A–E godtas. Ukjent/ikke relevant vises som «Ikke oppgitt», ikke en beregnet eller utledet verdi. Metoden er endret over tid; registrerte karakterer kan derfor bygge på ulike metodeversjoner. Det gjøres **ingen lokal helsepoengberegning** og ingen automatisk vinner.
+
+Kilder: [Santé publique France](https://www.santepubliquefrance.fr/en/nutrition-and-physical-activity/nutri-score), [Open Food Facts' produktfelter](https://openfoodfacts.github.io/documentation/docs/Product-Opener/schemas/schemas/product/) og [Helsedirektoratets Nøkkelhullet](https://www.helsedirektoratet.no/forebygging-diagnose-og-behandling/forebygging-og-levevaner/kosthold-og-ernaering/merkeordningen-nokkelhullet).
+
+## Produsent- og kildekvalitet
+
+«Kort fortalt» på produktsiden viser bare registrerte fakta, ikke antatt eksponering eller personlig helserisiko. Ukjent næringsverdi er aldri null, E-kodeantall er ikke bevis på alle stoffer som er til stede, og produkter som er registrert for Norge kan likevel være utilgjengelige i norske butikker. Strenge matcheregler er med vilje viktigere enn høyt antall treff.

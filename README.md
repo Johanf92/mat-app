@@ -10,7 +10,9 @@ Matkontroll (arbeidsnavn) er en Expo/React Native-app for å skanne matvarer, fo
 - Produkter og produktbilder fra Open Food Facts
 - Landvelger (Norge som standard). Strekkoder slås opp globalt
 - NOVA-grupper med forklaringer, makroer og tilgjengelig næringsinformasjon
-- Et lite sett med kildebaserte norske E-stofforklaringer
+- Nutri-Score A–E som sekundær ernæringsopplysning når Open Food Facts oppgir en gyldig karakter (aldri beregnet lokalt)
+- Kort, faktabasert oppsummering av registrert bearbeidingsgrad, sukkerarter og E-koder
+- Kildebelagte norske forklaringer av utvalgte E-stoffer og vanlige ingrediensbegreper
 - Forsiktig søk etter lignende produkter i samme bruksområde og valgte marked
 - Sammenligning av to ekte produkter: NOVA, næringsverdier, ingredienser og tilsetningsstoffer
 - Manuelt valg av produkt nummer to når datakilden mangler en passende kategori
@@ -50,7 +52,9 @@ Søkeresultatenes NOVA, bilder og næringstall kan være eldre enn den gjeldende
 
 Open Food Facts er fellesskapsdrevet og kan inneholde feil, manglende felter og flerspråklige ingredienslister. Manglende E-stoffer eller allergener betyr **ikke** at produktet er uten dem. NOVA måler bearbeiding og er ikke en samlet helsevurdering.
 
-Landregistrering er ikke dokumentasjon på butikktilgjengelighet. Alternativmotoren støtter foreløpig et avgrenset utvalg: havredrikker, havrebaserte kaffedrikker, gresk naturell yoghurt, naturell yoghurt, vanlig cola og sukkerfri cola. Den finner sammenlignbare varer, **ikke automatisk bedre** varer.
+Landregistrering er ikke dokumentasjon på butikktilgjengelighet. Alternativmotoren støtter foreløpig et avgrenset utvalg, blant annet havredrikker/baristadrikker, naturell yoghurt, kefir, skyr, cottage cheese, havregryn, melk, cola, grovbrød, loff, rugknekkebrød, cornflakes, jordbærsyltetøy og tydelig merkede tomatsuppevarianter. Ukjente eller uklare varianter går til manuelt produktvalg. Den finner sammenlignbare varer, **ikke automatisk bedre** varer.
+
+Nutri-Score (A–E) beskriver ernæringsprofilen, mens NOVA (1–4) beskriver bearbeidingsgrad. De vurderer **forskjellige egenskaper**, og ingen av dem er en samlet helsevurdering. Appen viser bare Nutri-Score når den er oppgitt i Open Food Facts og beregner ikke en karakter selv. Feltet kan mangle eller være basert på eldre næringsdata/beregningsmetode. I Norge er **Nøkkelhullet** en egen, nordisk merkeordning; Matkontroll fremstiller ikke Nutri-Score som norsk offisiell merking.
 
 Se [sammenligningslogikken](docs/COMPARISON.md) og [utviklingsplanen](docs/ROADMAP.md). Backend og offline-lagring er planlagt senere.
 
