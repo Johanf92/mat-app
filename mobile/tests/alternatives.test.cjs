@@ -432,3 +432,11 @@ test('sugar-free drink duplicates keep different registered formulations',()=>{
  assert.ok(!res.some(x=>x.code===samePack.code));
  assert.deepEqual(new Set(res.map(x=>x.code)),new Set([changed.code,light.code]));
 });
+
+test('stale beverage categories cannot turn named dry oats into oat drink suggestions',()=>{
+ const dry=next('9800000001010',{name:'Store Havregryn',brand:'Mølle',ingredients:'Havregryn',categories:['en:oat-drinks','en:plant-based-milks']});
+ const beverage=next('9800000001011',{name:'Havredrikk naturell',brand:'Drikke',ingredients:'Vann, havre',categories:['en:oat-drinks']});
+ assert.equal(productProfile(dry)?.kind,'oats-plain');
+ assert.equal(productProfile(beverage)?.kind,'oat-drink');
+ assert.deepEqual(relevantAlternatives(dry,[beverage],market),[]);
+});
