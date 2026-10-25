@@ -69,24 +69,34 @@ const text = root => !root ? '' : typeof root === 'string' || typeof root === 'n
   : Array.isArray(root) ? root.map(text).join(' ') : text(root.props?.children);
 const flush = () => new Promise(resolve => setImmediate(resolve));
 
-test('alternatives are above the expandable details', () => {
+test('alternatives follow all four product-detail sections and precede the source', () => {
   const all = nodes(harness().render());
-  const panel = all.findIndex(n => n.props.testID === 'product-alternatives');
-  const accordion = all.findIndex(n => typeof n.type === 'function' && n.type.name === 'Accordion');
-  assert.ok(panel >= 0 && panel < accordion);
+  const panels = all.filter(n => n.props.testID === 'product-alternatives');
+  assert.equal(panels.length, 1);
+  const panelIndex = all.indexOf(panels[0]);
+  const accordions = all.filter(n => typeof n.type === 'function' && n.type.name === 'Accordion');
+  assert.equal(accordions.length, 5);
+  for (const accordion of accordions.slice(0, 4)) assert.ok(all.indexOf(accordion) < panelIndex);
+  assert.equal(accordions[3].props.title, 'Allergenopplysninger');
+  assert.equal(accordions[4].props.title, 'Kilde og datakvalitet');
+  assert.ok(panelIndex < all.indexOf(accordions[4]));
 });
 test('alternatives panel contains no external link', () => {
   const panel = byId(harness().render(), 'product-alternatives');
   assert.equal(nodes(panel).some(n => n.type === 'SourceLink'), false);
   assert.equal(nodes(panel).some(n => 'href' in n.props || 'url' in n.props), false);
 });
-test('button stays visible with an explanation when category is unsupported', async () => {
+test('unsupported category has a concise explanation instead of a disabled action', () => {
   const h = harness({ supported: false });
   const tree = h.render();
-  const button = byId(tree, 'find-alternatives');
-  assert.equal(button.props.disabled, true);
-  assert.match(text(byId(tree, 'product-alternatives')), /Produktkategorien mangler/);
-  button.props.onPress(); await flush();
+  const panel = byId(tree, 'product-alternatives');
+  assert.ok(panel);
+  assert.equal(byId(tree, 'find-alternatives'), undefined);
+  assert.match(text(panel), /Lignende produkter/);
+  assert.match(text(byId(tree, 'alternatives-unavailable')), /produktkategorien/);
+  assert.ok(text(panel).length < 150);
+  assert.equal(nodes(panel).some(n => n.type === 'Pressable'), false);
+  assert.doesNotMatch(text(panel), /Ingen relevante alternativer/);
   assert.equal(h.calls.length, 0);
 });
 test('search calls internal matcher for selected product and market without navigating', async () => {
@@ -99,10 +109,16 @@ test('search calls internal matcher for selected product and market without navi
   assert.equal(h.routes.length, 0);
   assert.match(text(byId(h.render(), 'product-alternatives')), /Ingen relevante alternativer/);
 });
-test('idle state does not claim there were no results', () => {
-  const panel = byId(harness().render(), 'product-alternatives');
+test('idle supported state has a compact action and no premature result claims', () => {
+  const tree = harness().render();
+  const panel = byId(tree, 'product-alternatives');
+  const button = byId(tree, 'find-alternatives');
   assert.doesNotMatch(text(panel), /Ingen relevante alternativer/);
-  assert.match(text(panel), /Finn alternativer i Matkontroll/);
+  assert.match(text(panel), /Finn alternativer/);
+  assert.equal(button.props.accessibilityLabel, 'Finn alternativer i Matkontroll');
+  assert.equal(button.props.disabled, false);
+  assert.equal(button.props.style[0].minHeight, 44);
+  assert.equal(panel.props.style.backgroundColor, undefined);
 });
 test('pending request shows progress and disables repeat search', async () => {
   let resolve;
@@ -132,6 +148,7 @@ test('result opens another product internally', async () => {
   row.props.onPress();
   assert.equal(h.routes[0].pathname, '/product/[id]');
   assert.equal(h.routes[0].params.id, other.code);
+  assert.match(text(panel), /ikke en garanti/);
 });
 test('only product-source link is explicitly labelled external and inside source accordion', () => {
   const all = nodes(harness().render());

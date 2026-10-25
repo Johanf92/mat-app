@@ -76,27 +76,6 @@ export default function ProductScreen() {
         <Text style={styles.caption}>Per 100 g / 100 ml, slik datakilden oppgir verdiene.</Text>
         <View style={styles.macros}>{([['Protein', p.protein], ['Fett', p.fat], ['Karbohydrat', p.carbs]] as const).map(([label, value]) => <View key={label} style={styles.macro}><Text style={styles.caption}>{label}</Text><Text style={styles.macroValue}>{value === null ? '—' : amount(value)}</Text></View>)}</View>
         {[p.protein, p.fat, p.carbs].some(x => x === null) && <Text style={styles.caption}>— betyr at opplysningen mangler, ikke at mengden er null.</Text>}
-        <View testID="product-alternatives" style={styles.alternatives}>
-          <Text accessibilityRole="header" style={styles.section}>Alternativer i Matkontroll</Text>
-          <Text style={styles.caption}>Søk blant produkter registrert {market.tag ? 'for ' + market.name : 'i alle land'}. Resultatene vises her i appen.</Text>
-          <Pressable testID="find-alternatives" accessibilityRole="button" accessibilityLabel="Finn alternativer i Matkontroll"
-            accessibilityHint="Søker og viser treff på denne siden, uten å åpne nettleseren."
-            accessibilityState={{ disabled: !alternativesSupported || alternativesLoading, busy: alternativesLoading }}
-            style={[styles.altButton, (!alternativesSupported || alternativesLoading) && styles.altButtonDisabled]}
-            onPress={() => { void loadAlternatives(); }} disabled={!alternativesSupported || alternativesLoading}>
-            <Text style={styles.altButtonText}>{alternativesLoading ? 'Henter alternativer…' : alternativesRequested ? 'Søk etter alternativer igjen' : 'Finn alternativer i Matkontroll'}</Text>
-          </Pressable>
-          {!alternativesSupported && <Text style={styles.caption}>Alternativsøk er ikke tilgjengelig for denne varen ennå. Produktkategorien mangler eller støttes ikke av søket vårt.</Text>}
-          {alternativesLoading && <ActivityIndicator accessibilityLabel="Henter alternativer" color={colors.green} />}
-          {!!alternativesError && <Text accessibilityRole="alert" style={styles.warning}>{alternativesError}</Text>}
-          {alternativesRequested && !alternativesLoading && !alternativesError && alternatives.length === 0 && <Text style={styles.caption}>Ingen relevante alternativer med tilstrekkelige data ble funnet.</Text>}
-          {!alternativesLoading && !alternativesError && alternatives.map(other => <Pressable accessibilityRole="button" key={other.code} onPress={() => router.push({ pathname: '/product/[id]', params: { id: other.code } })} style={styles.altRow}>
-            {other.image ? <Image source={{ uri: other.image }} style={styles.altImage} resizeMode="contain" /> : <View style={styles.altImage} />}
-            <View style={{ flex: 1, gap: 4 }}><Text style={styles.additiveName}>{other.name}</Text><Text style={styles.caption}>{other.brand}</Text>
-            <Text style={styles.caption}>Protein {amount(other.protein)} · Fett {amount(other.fat)} · Karbohydrat {amount(other.carbs)}</Text><NovaBadge group={other.nova} compact /></View><Text style={styles.arrow}>›</Text>
-          </Pressable>)}
-          <Text style={styles.caption}>Samme registrerte kategori er bare et utgangspunkt. Kontroller bruksområde og innhold; treffene er ikke automatisk bedre eller tilgjengelige i butikk.</Text>
-        </View>
         <View style={styles.accordions}>
           <Accordion key={p.code + '-ingredients'} title="Ingredienser">
             <Text style={styles.caption}>{['no', 'nb'].includes(p.ingredientLanguage) ? 'Tekst registrert i norsk språkfelt.' : 'Tekst fra datakilden. Kan inneholde flere språk; ikke automatisk oversatt.'}</Text>
@@ -124,6 +103,28 @@ export default function ProductScreen() {
             <Text style={styles.body}>{p.allergens.length ? p.allergens.map(x => x.replace(/^[a-z]{2}:/, '')).join(', ') : 'Allergenopplysninger er ikke registrert.'}</Text>
             <Text style={styles.warning}>Manglende opplysninger betyr ikke allergenfritt. Kontroller alltid emballasjen ved allergi.</Text>
           </Accordion>
+          <View testID="product-alternatives" style={styles.alternatives}>
+            <Text accessibilityRole="header" style={styles.alternativesTitle}>Lignende produkter</Text>
+            {alternativesSupported ? <>
+              <Text style={styles.caption}>Søk {market.tag ? 'i ' + market.name : 'i alle land'}. Treffene vises her i appen.</Text>
+              <Pressable testID="find-alternatives" accessibilityRole="button" accessibilityLabel="Finn alternativer i Matkontroll"
+                accessibilityHint="Søker og viser treff på denne siden, uten å åpne nettleseren."
+                accessibilityState={{ disabled: alternativesLoading, busy: alternativesLoading }}
+                style={[styles.altButton, alternativesLoading && styles.altButtonDisabled]}
+                onPress={() => { void loadAlternatives(); }} disabled={alternativesLoading}>
+                <Text style={styles.altButtonText}>{alternativesLoading ? 'Henter alternativer…' : alternativesRequested ? 'Søk igjen' : 'Finn alternativer'}</Text>
+              </Pressable>
+              {alternativesLoading && <ActivityIndicator accessibilityLabel="Henter alternativer" color={colors.green} />}
+              {!!alternativesError && <Text accessibilityRole="alert" style={styles.warning}>{alternativesError}</Text>}
+              {alternativesRequested && !alternativesLoading && !alternativesError && alternatives.length === 0 && <Text style={styles.caption}>Ingen relevante alternativer med tilstrekkelige data ble funnet.</Text>}
+              {!alternativesLoading && !alternativesError && alternatives.map(other => <Pressable accessibilityRole="button" key={other.code} onPress={() => router.push({ pathname: '/product/[id]', params: { id: other.code } })} style={styles.altRow}>
+                {other.image ? <Image source={{ uri: other.image }} style={styles.altImage} resizeMode="contain" /> : <View style={styles.altImage} />}
+                <View style={{ flex: 1, gap: 4 }}><Text style={styles.additiveName}>{other.name}</Text><Text style={styles.caption}>{other.brand}</Text>
+                <Text style={styles.caption}>Protein {amount(other.protein)} · Fett {amount(other.fat)} · Karbohydrat {amount(other.carbs)}</Text><NovaBadge group={other.nova} compact /></View><Text style={styles.arrow}>›</Text>
+              </Pressable>)}
+              {alternativesRequested && !alternativesLoading && !alternativesError && alternatives.length > 0 && <Text style={styles.caption}>Samme kategori er et utgangspunkt, ikke en garanti for samme bruksområde, bedre innhold eller tilgjengelighet i butikk.</Text>}
+            </> : <Text testID="alternatives-unavailable" style={styles.caption}>Alternativsøk støttes ikke for denne produktkategorien ennå.</Text>}
+          </View>
           <Accordion key={p.code + '-source'} title="Kilde og datakvalitet">
             <Text style={styles.body}>Dataene kommer fra Open Food Facts og kan være feil eller ufullstendige.</Text>
             <Text style={styles.body}>{market.tag === null ? 'Du søker i alle land.' : p.countries.includes(market.tag) ? 'Registrert for ' + market.name + '. Dette er ikke en lagerstatus.' : 'Ikke registrert for ' + market.name + ' i dataene vi har. Varen kan likevel finnes der.'}</Text>
@@ -182,7 +183,10 @@ const styles = StyleSheet.create({
   nutrientValue: { fontSize: 15, lineHeight: 23, color: colors.ink, fontWeight: '600' }, warning: { fontSize: 13, lineHeight: 21, color: '#825617' },
   additiveRow: { flexDirection: 'row', gap: 12, alignItems: 'center', padding: 13, borderWidth: 1, borderColor: colors.line, borderRadius: 12, backgroundColor: 'white' },
   additiveName: { fontSize: 15, fontWeight: '700', color: colors.ink },
-  alternatives: { gap: 12, marginTop: 4, padding: 16, borderWidth: 1, borderColor: colors.line, borderRadius: 16, backgroundColor: '#F0F5EF' }, altButtonDisabled: { opacity: 0.5 }, altButton: { backgroundColor: colors.green, padding: 15, borderRadius: 12, alignItems: 'center' }, altButtonText: { fontSize: 15, fontWeight: '700', color: 'white' },
+  alternatives: { gap: 10, paddingVertical: 17, borderTopWidth: 1, borderTopColor: colors.line },
+  alternativesTitle: { fontSize: 16, fontWeight: '700', color: colors.ink }, altButtonDisabled: { opacity: 0.5 },
+  altButton: { minHeight: 44, borderWidth: 1, borderColor: colors.green, paddingHorizontal: 15, paddingVertical: 11, borderRadius: 12, alignItems: 'center', alignSelf: 'flex-start' },
+  altButtonText: { fontSize: 14, fontWeight: '700', color: colors.green },
   altRow: { flexDirection: 'row', gap: 12, alignItems: 'center', padding: 12, borderWidth: 1, borderColor: colors.line, borderRadius: 14, backgroundColor: 'white' },
   altImage: { width: 58, height: 70, backgroundColor: '#EBF1EB', borderRadius: 9 },
   novaExplanation: { padding: 13, borderRadius: 12, gap: 4 }, explanationTitle: { fontSize: 15, fontWeight: '800' },
