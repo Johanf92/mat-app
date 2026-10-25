@@ -60,7 +60,7 @@ function harness(){
     additiveEvidenceLabel:s=>s==='both'?'Ingrediens og felt':'Ikke oppført',
     quickComparisonFacts:()=>facts
   },
-  '../src/alternatives':{productProfile:()=>({kind:'cola-regular'}),candidateNote:()=>null},
+  '../src/alternatives':{productProfile:()=>({kind:'cola-regular'}),candidateNote:()=>null,relatedVariantComparisonNote:()=>null},
   '../src/additives':{
     additiveInfo:()=>({id:'E211',name:'Natriumbenzoat',description:'Konserveringsmiddel',source:'https://example.org'}),
     formatAdditiveCode:s=>s,summarizeAdditives:()=>({unrecognized:[]})
