@@ -21,7 +21,7 @@ loaded.require=id=>{
  throw Error('Unexpected dependency: '+id);
 };
 loaded._compile(out.outputText,sourcePath);
-const {productProfile,comparableCategory,relevantAlternatives,findAlternatives}=loaded.exports;
+const {productProfile,comparableCategory,relevantAlternatives,findAlternatives,candidateNote}=loaded.exports;
 const market={code:'no',name:'Norge',tag:'en:norway'};
 const base={code:'7394376616037',name:'iKaffe',brand:'Oatly',ingredients:'Havrebas, rapsolje, salt',categories:[],countries:['en:norway'],nova:3,
  protein:1.1,fat:3,carbs:7.1,sugar:3.4,energy:61,salt:0.1,fiber:0.8,additives:[],allergens:[]};
@@ -94,4 +94,69 @@ test('search error is not silently mistaken for no available alternatives',async
  calls.length=0;textResults=new Error('Søketjenesten svarer ikke');
  try{await assert.rejects(findAlternatives(base,market),/Søketjenesten svarer ikke/);}
  finally{textResults=[];}
+});
+
+
+test('regular cola finds only original-style cola, never zero, energy or novelty flavours', async () => {
+ const coca=next('5449000000996',{name:'Coca-Cola Original Taste',brand:'Coca-Cola',ingredients:'Vann, sukker',categories:['en:colas'],carbs:10.6,sugar:10.6});
+ const classic=next('1111111100001',{name:'Pepsi Cola',brand:'Pepsi',ingredients:undefined,carbs:11,sugar:11,categories:['en:colas']});
+ const another=next('1111111100002',{name:'Classic Cola',brand:'Other Brand',ingredients:undefined,carbs:10,sugar:10,categories:['en:colas']});
+ const zero=next('1111111100003',{name:'Coca-Cola Zero Sugar',brand:'Coca-Cola',sugar:0,categories:['en:colas']});
+ const energy=next('1111111100004',{name:'CocaCola Energy',brand:'Coca-Cola',categories:['en:colas']});
+ const novelty=next('1111111100005',{name:'Coca-Cola Dreamworld',brand:'Coca-Cola',categories:['en:colas']});
+ const candy=next('1111111100006',{name:'Cola gummies',brand:'Sweet',categories:[]});
+ const cherry=next('1111111100007',{name:'Cherry Coke',brand:'Coca-Cola',categories:['en:colas']});
+ assert.equal(productProfile(coca).kind,'cola-regular');
+ const matched=relevantAlternatives(coca,[classic,zero,energy,novelty,candy,another,cherry],market);
+ assert.deepEqual(new Set(matched.map(x=>x.code)),new Set([classic.code,another.code]));
+ calls.length=0;textResults=[classic,another,zero,energy,novelty,candy,cherry];
+ const fetched=await findAlternatives(coca,market);
+ assert.equal(calls.length,1);
+ assert.equal(calls[0].args[0],'cola');
+ assert.deepEqual(new Set(fetched.map(x=>x.code)),new Set([classic.code,another.code]));
+});
+
+test('sugar-free cola is not automatically mixed with original, energy, cherry or caffeine-free', async () => {
+ const source=next('1111111100010',{name:'Coca-Cola Zero Sugar',brand:'Coca-Cola',categories:['en:colas'],sugar:0});
+ const max=next('1111111100011',{name:'Pepsi Max',brand:'Pepsi',categories:['en:colas'],sugar:0});
+ const light=next('1111111100012',{name:'Coca-Cola Light',brand:'Coca-Cola',categories:['en:colas'],sugar:0});
+ const original=next('1111111100013',{name:'Coca-Cola Original Taste',brand:'Coca-Cola',categories:['en:colas'],sugar:10.6});
+ const energy=next('1111111100014',{name:'Coca Cola Energy Zero',brand:'Coca-Cola',categories:['en:colas'],sugar:0});
+ const cherry=next('1111111100015',{name:'Coca Cola Zero Cherry',brand:'Coca-Cola',categories:['en:colas'],sugar:0});
+ const decaf=next('1111111100016',{name:'Coca-Cola Zero Caffeine-free',brand:'Coca-Cola',categories:['en:colas'],sugar:0});
+ assert.equal(productProfile(source).kind,'cola-sugar-free');
+ assert.deepEqual(new Set(relevantAlternatives(source,[original,energy,light,cherry,max,decaf],market).map(p=>p.code)),
+  new Set([max.code,light.code]));
+ calls.length=0;textResults=[max,original];
+ await findAlternatives(source,market);
+ assert.equal(calls[0].args[0],'cola zero');
+});
+
+test('ambiguous Greek yoghurt is not automatically labelled naturell', () => {
+ const source=next('1111111100020',{name:'Gresk Yoghurt Naturell',brand:'Tine',ingredients:'Melk, yoghurtkultur'});
+ const ambiguous=next('1111111100021',{name:'Gresk yoghurt',brand:'Other',ingredients:undefined,carbs:15.8,sugar:13});
+ const sweetened=next('1111111100022',{name:'Gresk yoghurt',brand:'Other',ingredients:'Melk, sukker, yoghurtkultur',carbs:15.8,sugar:13});
+ const unflavoured=next('1111111100023',{name:'Gresk yoghurt',brand:'Another',ingredients:'Melk, melkesyrekultur',carbs:4,sugar:4});
+ const lactoseFree=next('1111111100024',{name:'Gresk yoghurt laktosefri',brand:'Dairy',ingredients:'Melk, laktase, melkesyrekultur',carbs:3,sugar:3});
+ const skyr=next('1111111100025',{name:'Skyr naturell',brand:'Some',ingredients:'Melk, kultur'});
+ assert.equal(productProfile(ambiguous),null);
+ assert.equal(productProfile(sweetened),null);
+ assert.equal(productProfile(unflavoured).kind,'greek-plain');
+ assert.equal(productProfile(skyr),null);
+ assert.deepEqual(new Set(relevantAlternatives(source,[ambiguous,sweetened,unflavoured,lactoseFree,skyr],market).map(p=>p.code)),
+  new Set([unflavoured.code,lactoseFree.code]));
+});
+
+test('large nutrient differences are flagged as uncertain product data, not health advice', () => {
+ const source=next('1111111100030',{name:'Gresk naturell yoghurt',brand:'First',ingredients:'Melk, kultur',carbs:3.3});
+ const candidate=next('1111111100031',{name:'Gresk yoghurt naturell',brand:'Second',ingredients:'Melk, kultur',carbs:15.8});
+ assert.match(candidateNote(source,candidate),/Stor forskjell i karbohydrater/);
+ assert.equal(candidateNote(source,{...candidate,carbs:4.9}),null);
+ assert.match(candidateNote(source,{...candidate,carbs:4.9,ingredients:undefined}),/Ingredienslisten/);
+});
+
+test('Norwegian compound havredrikk is recognised and separated from barista', () => {
+ const ordinary=next('1111111100040',{name:'Havredrikk naturell',brand:'Other',ingredients:undefined,categories:[]});
+ assert.equal(productProfile(ordinary).kind,'oat-drink');
+ assert.deepEqual(relevantAlternatives(base,[ordinary],market),[]);
 });
