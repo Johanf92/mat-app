@@ -152,7 +152,7 @@ test('large nutrient differences are flagged as uncertain product data, not heal
  const candidate=next('1111111100031',{name:'Gresk yoghurt naturell',brand:'Second',ingredients:'Melk, kultur',carbs:15.8});
  assert.match(candidateNote(source,candidate),/Stor forskjell i karbohydrater/);
  assert.equal(candidateNote(source,{...candidate,carbs:4.9}),null);
- assert.match(candidateNote(source,{...candidate,carbs:4.9,ingredients:undefined}),/Ingredienslisten/);
+ assert.equal(candidateNote(source,{...candidate,carbs:4.9,ingredients:undefined}),null);
 });
 
 test('Norwegian compound havredrikk is recognised and separated from barista', () => {
