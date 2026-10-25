@@ -1,10 +1,8 @@
 // Manual/one-off network check. Never used by the app.
 const ua='Matkontroll/0.1 (https://github.com/Johanf92/mat-app)';
 const probes=[
-  ['search-market','https://search.openfoodfacts.org/search?q=cola%20countries_tags%3A%22en%3Anorway%22&page_size=3&fields=code,product_name,brands,countries_tags,nutriments,categories_tags,nova_group'],
-  ['category-oats','https://search.openfoodfacts.org/search?q=categories_tags%3A%22en%3Aoat-drinks%22%20countries_tags%3A%22en%3Anorway%22&page_size=3&fields=code,product_name,brands,countries_tags,nutriments,categories_tags,nova_group'],
-  ['category-greek','https://search.openfoodfacts.org/search?q=categories_tags%3A%22en%3Agreek-yogurts%22%20countries_tags%3A%22en%3Anorway%22&page_size=3&fields=code,product_name,brands,countries_tags,nutriments,categories_tags,nova_group'],
-  ['text-greek','https://search.openfoodfacts.org/search?q=gresk%20yoghurt%20countries_tags%3A%22en%3Anorway%22&page_size=3&fields=code,product_name,brands,countries_tags,nutriments,categories_tags,nova_group'],
+ ['text-barista','https://search.openfoodfacts.org/search?q=barista%20countries_tags%3A%22en%3Anorway%22&page_size=5&fields=code,product_name,brands,countries_tags,nutriments,categories_tags,nova_group,ingredients_text,quantity'],
+ ['text-greek','https://search.openfoodfacts.org/search?q=gresk%20yoghurt%20countries_tags%3A%22en%3Anorway%22&page_size=3&fields=code,product_name,brands,countries_tags,nutriments,categories_tags,nova_group,ingredients_text,quantity'],
 ];
 (async()=>{
   for (const [label,url] of probes){
@@ -26,6 +24,8 @@ const probes=[
         firstKeys:hit&&typeof hit==='object'?Object.keys(hit).slice(0,25):[],
         firstCode:hit?.code??hit?._source?.code??null,
         firstNameType:typeof hit?.product_name,firstBrandType:typeof hit?.brands,
+        brandPreview:JSON.stringify(hit?.brands??null).slice(0,180),
+        ingredientsType:typeof hit?.ingredients_text,
         firstCountries:Array.isArray(hit?.countries_tags)?hit.countries_tags.slice(0,4):null,
         firstNames:Array.isArray(parsed?.hits)?parsed.hits.slice(0,3).map(p=>({code:p.code,name:typeof p.product_name==='string'?p.product_name.slice(0,90):String(p.product_name??'').slice(0,90)})):[],
         responsePreview:!parsed?raw.slice(0,110).replace(/\s+/g,' '):undefined
