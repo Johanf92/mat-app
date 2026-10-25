@@ -1,8 +1,8 @@
 // Manual/one-off network check. Never used by the app.
 const ua='Matkontroll/0.1 (https://github.com/Johanf92/mat-app)';
 const probes=[
- ['text-barista','https://search.openfoodfacts.org/search?q=barista%20countries_tags%3A%22en%3Anorway%22&page_size=5&fields=code,product_name,brands,countries_tags,nutriments,categories_tags,nova_group,ingredients_text,quantity'],
- ['text-greek','https://search.openfoodfacts.org/search?q=gresk%20yoghurt%20countries_tags%3A%22en%3Anorway%22&page_size=3&fields=code,product_name,brands,countries_tags,nutriments,categories_tags,nova_group,ingredients_text,quantity'],
+ ['exact-app-coca','https://search.openfoodfacts.org/search?q=Coca+Cola+countries_tags%3A%22en%3Anorway%22&page_size=3&page=1&langs=no%2Cen&fields=code%2Cproduct_name%2Cbrands%2Ccountries_tags%2Ccategories_tags%2Cnova_group%2Cnutriments%2Cingredients_text%2Cquantity'],
+ ['exact-app-greek','https://search.openfoodfacts.org/search?q=gresk+yoghurt+countries_tags%3A%22en%3Anorway%22&page_size=3&page=1&langs=no%2Cen&fields=code%2Cproduct_name%2Cbrands%2Ccountries_tags%2Ccategories_tags%2Cnova_group%2Cnutriments%2Cingredients_text%2Cquantity'],
 ];
 (async()=>{
   for (const [label,url] of probes){
