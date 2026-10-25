@@ -6,7 +6,7 @@ import { type FoodProduct, getProduct, searchProducts } from '../src/openFoodFac
 import { useMarket } from '../src/MarketContext';
 import { type CompareFocus, COMPARE_OPTIONS, METRICS, comparisonInsight, metricAmount, comparisonDataWarnings, keyDifferences, additiveEvidenceRows, additiveEvidenceLabel, quickComparisonFacts } from '../src/comparison';
 import { productProfile, candidateNote, relatedVariantComparisonNote } from '../src/alternatives';
-import { additiveInfo, formatAdditiveCode, summarizeAdditives, type AdditiveInfo } from '../src/additives';
+import { additiveInfo, additiveSourceLabel, formatAdditiveCode, summarizeAdditives, type AdditiveInfo } from '../src/additives';
 import { displayIngredientText } from '../src/ingredientEvidence';
 import { colors, InfoSheet, NovaBadge, SourceLink } from '../src/ui';
 
@@ -110,7 +110,7 @@ export default function Compare() {
     {left&&right&&!loading&&<>
       <View style={s.productGrid}>
        {[left,right].map((p,index)=><View key={p.code} style={s.productCard}>
-        {p.image?<Image source={{uri:p.image}} style={s.productImage} resizeMode="contain"/>:<View style={s.productImage}/>}
+        {p.image?<Image source={{uri:p.image}} style={s.productImage} resizeMode="contain"/>:<View style={[s.productImage,s.productImagePlaceholder]}><Text style={s.productImagePlaceholderText}>Bilde ikke registrert</Text></View>}
         <Text style={s.columnCaption}>PRODUKT {index===0?'A':'B'}</Text>
         <Text numberOfLines={3} style={s.productName}>{p.name}</Text><Text numberOfLines={2} style={s.note}>{p.brand}</Text>
         <NovaBadge group={p.nova} compact/>
@@ -223,8 +223,11 @@ export default function Compare() {
     title={selectedAdditive?formatAdditiveCode(selectedAdditive.id)+' · '+selectedAdditive.name:''}
     onClose={()=>setSelectedAdditive(null)}>
     <Text style={s.body}>{selectedAdditive?.description}</Text>
+    {!!selectedAdditive?.background&&<><Text style={s.modalHeading}>Bakgrunn og bruk</Text><Text style={s.body}>{selectedAdditive.background}</Text></>}
+    {!!selectedAdditive?.healthContext&&<><Text style={s.modalHeading}>Hva vet vi?</Text><Text style={s.body}>{selectedAdditive.healthContext}</Text></>}
     <Text style={s.note}>Funksjonen beskriver stoffet generelt. Vi kjenner ikke mengden brukt i den aktuelle varen.</Text>
-    {!!selectedAdditive&&<SourceLink label="Kilde for E-nummer og stoffnavn" url={selectedAdditive.source}/>}
+    {!!selectedAdditive&&<SourceLink label={additiveSourceLabel(selectedAdditive.source)} url={selectedAdditive.source}/>}
+    {!!selectedAdditive?.healthSource&&<SourceLink label={additiveSourceLabel(selectedAdditive.healthSource)} url={selectedAdditive.healthSource}/>}
   </InfoSheet>
  </SafeAreaView>;
 }
@@ -232,14 +235,14 @@ const s=StyleSheet.create({
  safe:{flex:1,backgroundColor:colors.page},toolbar:{paddingHorizontal:18,borderBottomWidth:1,borderBottomColor:colors.line},
  backButton:{minHeight:48,justifyContent:'center'},back:{fontSize:16,fontWeight:'700',color:colors.green},
  page:{padding:22,paddingBottom:55,gap:15},title:{fontSize:29,fontWeight:'800',color:colors.ink},
- note:{fontSize:12,lineHeight:19,color:colors.muted},body:{fontSize:15,lineHeight:23,color:colors.ink},section:{fontSize:19,fontWeight:'800',color:colors.ink,marginTop:6},
+ note:{fontSize:12,lineHeight:19,color:colors.muted},body:{fontSize:15,lineHeight:23,color:colors.ink},modalHeading:{fontSize:16,fontWeight:'800',color:colors.ink},section:{fontSize:19,fontWeight:'800',color:colors.ink,marginTop:6},
  warning:{fontSize:13,lineHeight:21,color:'#80551C'},pick:{gap:13,backgroundColor:'#EFF5EF',padding:16,borderRadius:18},
  input:{fontSize:16,backgroundColor:'white',borderRadius:12,padding:14,borderWidth:1,borderColor:colors.line,color:colors.ink},
  button:{backgroundColor:colors.green,borderRadius:12,padding:15,alignItems:'center',minHeight:48},buttonText:{color:'white',fontSize:15,fontWeight:'700'},
  disabled:{opacity:0.5},result:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:'white',borderRadius:13,borderColor:colors.line,borderWidth:1,padding:12},
  resultImage:{width:54,height:62,borderRadius:8,backgroundColor:'#E9EEE9'},resultName:{fontSize:15,fontWeight:'700',color:colors.ink},arrow:{color:colors.green,fontSize:25},
  productGrid:{flexDirection:'row',gap:12},productCard:{flex:1,backgroundColor:'white',borderColor:colors.line,borderWidth:1,borderRadius:16,padding:12,gap:8,minWidth:0},
- productImage:{width:'100%',height:95,borderRadius:10,backgroundColor:'#EDF2ED'},columnCaption:{fontSize:11,letterSpacing:0.6,color:colors.muted,fontWeight:'800'},
+ productImage:{width:'100%',height:95,borderRadius:10,backgroundColor:'#EDF2ED'},productImagePlaceholder:{justifyContent:'center',alignItems:'center',padding:8},productImagePlaceholderText:{fontSize:11,color:colors.muted,textAlign:'center'},columnCaption:{fontSize:11,letterSpacing:0.6,color:colors.muted,fontWeight:'800'},
  productName:{fontSize:16,fontWeight:'800',color:colors.ink,minHeight:35},change:{minHeight:44,justifyContent:'center',alignSelf:'flex-start'},
  changeText:{color:colors.green,fontSize:14,fontWeight:'700'},options:{flexDirection:'row',flexWrap:'wrap',gap:9},option:{flexBasis:'46%',flexGrow:1,minHeight:44,justifyContent:'center',alignItems:'center',borderColor:colors.line,borderWidth:1,borderRadius:20,paddingHorizontal:10,paddingVertical:10,backgroundColor:'white'},
  optionSelected:{borderColor:colors.green,backgroundColor:'#E2F0E5'},optionText:{fontSize:13,fontWeight:'600',color:colors.muted},optionTextSelected:{color:colors.green},
