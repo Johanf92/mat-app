@@ -156,7 +156,7 @@ test('result opens another product internally', async () => {
   assert.equal(h.routes[1].pathname, '/compare');
   assert.equal(h.routes[1].params.left, product.code);
   assert.equal(h.routes[1].params.right, other.code);
-  assert.match(text(panel), /Kontroller variant/);
+  assert.match(text(panel), /ikke en sunnhetsrangering/);
 });
 test('only product-source link is explicitly labelled external and inside source accordion', () => {
   const all = nodes(harness().render());
