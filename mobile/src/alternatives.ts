@@ -300,7 +300,11 @@ function brandFamily(p: FoodProduct): string | null {
   if (/^coca cola\b/.test(brand) || /^coca cola\b/.test(name)) return 'coca-cola';
   if (/^pepsi\b/.test(brand) || /^pepsi\b/.test(name)) return 'pepsi';
   const first = brand.split(' ')[0];
-  return !first || ['merke', 'unknown', 'ikke', 'unspecified'].includes(first) ? null : first;
+  if(!first || ['merke','unknown','ikke','unspecified'].includes(first))return null;
+  // Generic prefixes are not manufacturer families: Brand A and Brand B
+  // must remain separate alternatives even if their nutrient data match.
+  if(['brand','example','other','test','generic'].includes(first))return brand;
+  return first;
 }
 /**
  * Group only well-supported lookalikes. For cola, different package sizes of
