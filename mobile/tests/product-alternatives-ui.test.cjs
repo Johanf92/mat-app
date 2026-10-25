@@ -95,7 +95,7 @@ test('unsupported category has a concise explanation instead of a disabled actio
   assert.match(text(panel), /Lignende produkter/);
   assert.match(text(byId(tree, 'alternatives-unavailable')), /produktkategorien/);
   assert.ok(text(panel).length < 150);
-  assert.equal(nodes(panel).some(n => n.type === 'Pressable'), false);
+  assert.ok(byId(tree, 'manual-compare'), 'manual comparison must remain possible even without category tags');
   assert.doesNotMatch(text(panel), /Ingen relevante alternativer/);
   assert.equal(h.calls.length, 0);
 });
@@ -143,11 +143,17 @@ test('result opens another product internally', async () => {
   const h = harness({ find: async () => [other] });
   byId(h.render(), 'find-alternatives').props.onPress(); await flush();
   const panel = byId(h.render(), 'product-alternatives');
-  const row = nodes(panel).find(n => n.type === 'Pressable' && !n.props.testID && text(n).includes(other.name));
-  assert.ok(row);
-  row.props.onPress();
+  const view = nodes(panel).find(n => n.type === 'Pressable' && n.props.accessibilityLabel === 'Se ' + other.name);
+  const compare = nodes(panel).find(n => n.type === 'Pressable' && n.props.accessibilityLabel === 'Sammenlign ' + product.name + ' med ' + other.name);
+  assert.ok(view);
+  assert.ok(compare);
+  view.props.onPress();
   assert.equal(h.routes[0].pathname, '/product/[id]');
   assert.equal(h.routes[0].params.id, other.code);
+  compare.props.onPress();
+  assert.equal(h.routes[1].pathname, '/compare');
+  assert.equal(h.routes[1].params.left, product.code);
+  assert.equal(h.routes[1].params.right, other.code);
   assert.match(text(panel), /ikke en garanti/);
 });
 test('only product-source link is explicitly labelled external and inside source accordion', () => {
@@ -157,4 +163,14 @@ test('only product-source link is explicitly labelled external and inside source
   assert.match(links[0].props.label, /i nettleseren/);
   const accordion = all.find(n => typeof n.type === 'function' && n.props.title === 'Kilde og datakvalitet');
   assert.ok(nodes(accordion).includes(links[0]));
+});
+
+test('manual comparison remains reachable with unsupported categories', () => {
+  const h = harness({ supported: false });
+  const button = byId(h.render(), 'manual-compare');
+  assert.ok(button);
+  button.props.onPress();
+  assert.equal(h.routes[0].pathname, '/compare');
+  assert.equal(h.routes[0].params.left, product.code);
+  assert.equal(h.routes[0].params.right, undefined);
 });
