@@ -59,45 +59,39 @@ test('norwegian market guard, same identity and incomplete entries are filtered'
  const empty=next('55555555',{name:'Havre Barista',brand:'Empty',ingredients:undefined,protein:null,fat:null,carbs:null,sugar:null,nova:null,image:undefined});
  assert.deepEqual(relevantAlternatives(base,[good,foreign,duplicate,empty],market).map(x=>x.code),['22222222']);
 });
-test('search falls back to text if category tags yield too few alternatives',async()=>{
- calls.length=0;categoryResults=[];textResults=[next('22222222',{name:'Havre barista drikk',brand:'Different'})];
+test('one text search is used rather than unreliable category facets',async()=>{
+ calls.length=0;textResults=[
+  next('22222222',{name:'Havredrikk Barista',brand:'Other'}),
+  next('33333333',{name:'Coffee syrup toffee',brand:'Syrup',ingredients:'Sukker'})
+ ];
  const results=await findAlternatives(base,market);
  assert.deepEqual(results.map(x=>x.code),['22222222']);
- assert.equal(calls.length,2);
- assert.equal(calls[0].type,'category');assert.equal(calls[0].args[0],'en:oat-drinks');
- assert.equal(calls[1].type,'text');assert.equal(calls[1].args[0],'barista');
- assert.equal(calls[1].args[1],market);
+ assert.equal(calls.length,1);
+ assert.equal(calls[0].type,'text');
+ assert.equal(calls[0].args[0],'barista');
+ assert.equal(calls[0].args[1],market);
 });
-test('sufficient category results skip redundant full-text requests',async()=>{
- calls.length=0;textResults=[];
- categoryResults=Array.from({length:5},(_,i)=>next(String(11111111+i),{name:'Oat Barista '+i,brand:'Brand '+i}));
- const results=await findAlternatives(base,market);
- assert.equal(results.length,5);assert.equal(calls.length,1);
+test('greek yoghurt text candidates must be natural and registered for Norway',async()=>{
+ calls.length=0;textResults=[
+  next('22222222',{name:'Gresk yoghurt naturell',brand:'Other',ingredients:undefined,countries:['en:norway']}),
+  next('33333333',{name:'Gresk jordbaeryoghurt',brand:'Other',countries:['en:norway']}),
+  next('44444444',{name:'Greek yoghurt',brand:'Foreign',countries:['en:sweden']}),
+ ];
+ const greek=next('11111111',{name:'Gresk naturell yoghurt',brand:'Source',ingredients:'Melk, kultur'});
+ const results=await findAlternatives(greek,market);
+ assert.deepEqual(results.map(x=>x.code),['22222222']);
+ assert.equal(calls.length,1);
+ assert.equal(calls[0].args[0],'gresk yoghurt');
 });
 test('unsupported products do not trigger API searches',async()=>{
  calls.length=0;
- assert.equal(productProfile(next('99999999',{name:'Pasta Bolognese',brand:'Generic',ingredients:'Pasta, tomato',categories:[]})),null);
- const result=await findAlternatives(next('99999999',{name:'Pasta Bolognese',brand:'Generic',ingredients:'Pasta, tomato',categories:[]}),market);
+ const pasta=next('99999999',{name:'Pasta Bolognese',brand:'Generic',ingredients:'Pasta, tomato',categories:[]});
+ assert.equal(productProfile(pasta),null);
+ const result=await findAlternatives(pasta,market);
  assert.deepEqual(result,[]);assert.equal(calls.length,0);
 });
-
-test('category service failure falls back to a narrowly matched text search',async()=>{
- calls.length=0;categoryResults=new Error('503');textResults=[next('22222222',{name:'Havre barista drikk',brand:'Different'})];
- try{
-  const results=await findAlternatives(base,market);
-  assert.deepEqual(results.map(x=>x.code),['22222222']);
-  assert.deepEqual(calls.map(x=>x.type),['category','text']);
- }finally{categoryResults=[];textResults=[];}
-});
-test('partial category results survive a failing fallback search',async()=>{
- calls.length=0;categoryResults=[next('22222222',{name:'Havre barista drikk',brand:'Different'})];textResults=new Error('503');
- try{
-  const results=await findAlternatives(base,market);
-  assert.equal(results.length,1);
- }finally{categoryResults=[];textResults=[];}
-});
-test('both search requests failing reports an error rather than pretending no matches exist',async()=>{
- calls.length=0;categoryResults=new Error('503');textResults=new Error('502');
- try{await assert.rejects(findAlternatives(base,market),/502/);}
- finally{categoryResults=[];textResults=[];}
+test('search error is not silently mistaken for no available alternatives',async()=>{
+ calls.length=0;textResults=new Error('Søketjenesten svarer ikke');
+ try{await assert.rejects(findAlternatives(base,market),/Søketjenesten svarer ikke/);}
+ finally{textResults=[];}
 });
