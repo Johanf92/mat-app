@@ -168,7 +168,7 @@ test('quick overview handles missing fields without assigning zero or claiming a
  const facts=quickComparisonFacts(missing,registered);
  assert.ok(facts.find(x=>x.key==='nova-unknown'));
  assert.ok(facts.find(x=>x.key==='missing-ingredients'));
- assert.doesNotMatch(facts.map(x=>x.summary).join(' '),/0 g/);
+ assert.ok(!facts.some(x=>['sugar','protein','fat'].includes(x.key)), 'missing nutrient values must not be presented as a zero-valued metric');
  assert.ok(facts.length<=3);
 });
 
