@@ -21,7 +21,7 @@ loaded.require=id=>{
  throw Error('Unexpected dependency: '+id);
 };
 loaded._compile(out.outputText,sourcePath);
-const {productProfile,comparableCategory,relevantAlternatives,findAlternatives,candidateNote}=loaded.exports;
+const {productProfile,comparableCategory,relevantAlternatives,findAlternatives,candidateNote,labeledLactoseFree}=loaded.exports;
 const market={code:'no',name:'Norge',tag:'en:norway'};
 const base={code:'7394376616037',name:'iKaffe',brand:'Oatly',ingredients:'Havrebas, rapsolje, salt',categories:[],countries:['en:norway'],nova:3,
  protein:1.1,fat:3,carbs:7.1,sugar:3.4,energy:61,salt:0.1,fiber:0.8,additives:[],allergens:[]};
@@ -161,4 +161,37 @@ test('Norwegian compound havredrikk is recognised and separated from barista', (
  const ordinary=next('1111111100040',{name:'Havredrikk naturell',brand:'Other',ingredients:undefined,categories:[]});
  assert.equal(productProfile(ordinary).kind,'oat-drink');
  assert.deepEqual(relevantAlternatives(base,[ordinary],market),[]);
+});
+
+test('regular Coca-Cola search does not suggest repackaged Coca-Cola Original as a different drink', () => {
+ const source=next('5449000000996',{name:'Coca-Cola Original Taste',brand:'Coca-Cola Europacific Partners Norge AS',categories:['en:colas'],ingredients:'Kullsyreholdig vann, sukker',sugar:10.6,carbs:10.6});
+ const canned=next('1111111100081',{name:'Coca Cola original taste 330ml',brand:'Coca cola',categories:['en:colas'],ingredients:undefined,sugar:10.6,carbs:10.6});
+ const bottle=next('1111111100082',{name:'Coca cola',brand:'COCA-COLA EUROPEAN PARTNERS NORGE A',categories:['en:colas'],ingredients:undefined,sugar:10.6,carbs:10.6});
+ const grans=next('1111111100083',{name:'Cola',brand:'Grans',categories:['en:colas'],ingredients:'Vann, sukker',sugar:10.6,carbs:10.6});
+ const petpack=next('1111111100084',{name:'Cola',brand:'PETPACK DRIKKER AS',categories:['en:colas'],ingredients:undefined,sugar:11,carbs:11});
+ assert.deepEqual(new Set(relevantAlternatives(source,[canned,bottle,grans,petpack],market).map(p=>p.code)),new Set([grans.code,petpack.code]));
+});
+
+test('yoghurt duplicate aliases are collapsed, but lactose-free and unspecified variants remain separate', () => {
+ const source=next('7038010069451',{name:'Gresk yogurt Laktosefri',brand:'TINE',ingredients:'Lettmelk, yoghurtkultur',nova:1,energy:64,protein:8.5,fat:2,carbs:3.3,sugar:3.3});
+ const tine=next('1111111100090',{name:'Gresk Type Naturell Yoghurt',brand:'Tine',ingredients:'Lettmelk, yoghurtkultur',nova:3,energy:64,protein:8.5,fat:2,carbs:3.3,sugar:3.3});
+ const synnove1=next('1111111100091',{name:'Gresk Yoghurt Naturell',brand:'Synnøve Finden AS',ingredients:undefined,energy:78,protein:8.3,fat:2,carbs:4.9,sugar:4.9,image:undefined});
+ const synnove2=next('1111111100092',{name:'Gresk yoghurt Naturell',brand:'Synnøve',ingredients:undefined,energy:78,protein:8.3,fat:2,carbs:4.9,sugar:4.9,image:'https://images.example/synnoeve.jpg'});
+ const results=relevantAlternatives(source,[synnove1,synnove2,tine],market);
+ assert.equal(labeledLactoseFree(source),true);
+ assert.equal(labeledLactoseFree(tine),false);
+ assert.ok(results.some(p=>p.code===tine.code),'non-labelled TINE yoghurt remains comparable with a variant caution');
+ assert.equal(results.filter(p=>p.brand.toLowerCase().startsWith('synn')).length,1,'aliases with the same documented nutrients collapse');
+ assert.equal(results.find(p=>p.brand.toLowerCase().startsWith('synn')).code,synnove2.code,'prefer better-documented duplicate');
+ assert.match(candidateNote(source,tine),/ikke registrert som laktosefri/);
+ assert.match(candidateNote(source,tine),/Laktosefri betyr ikke melkefri/);
+});
+
+test('lactose-free label does not follow from an unspecified name or from missing allergen tags', () => {
+ const source=next('1111111100093',{name:'Gresk yoghurt Naturell',brand:'A',ingredients:'Melk, kultur'});
+ const candidate=next('1111111100094',{name:'Gresk yoghurt Laktosefri',brand:'B',ingredients:'Melk, kultur',allergens:[]});
+ assert.equal(labeledLactoseFree(source),false);
+ assert.equal(labeledLactoseFree(candidate),true);
+ assert.match(candidateNote(source,candidate),/merket laktosefri/);
+ assert.match(candidateNote(source,candidate),/ikke om produktet er melkefritt/);
 });
