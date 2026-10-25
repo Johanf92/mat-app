@@ -211,3 +211,18 @@ test('ingredient term opens a sourced explanation without changing additive coun
  assert.ok(nodes(tree).some(n=>n.props?.title==='Tilsetningsstoffer'), 'aroma must not create an E-number entry');
  assert.equal(h.routes.length,0);
 });
+
+
+test('product detail shows a clear placeholder after a failed remote photo',()=>{
+ const before=product.image;
+ product.image='https://example.invalid/test-image.jpg';
+ try {
+  const h=harness();
+  const initial=nodes(h.render()).find(n=>n.type==='Image'&&n.props?.source?.uri===product.image);
+  assert.ok(initial,'source image should render initially');
+  assert.equal(typeof initial.props.onError,'function');
+  initial.props.onError();
+  assert.match(text(h.render()),/Kunne ikke laste bildet/);
+  assert.equal(h.routes.length,0);
+ } finally {product.image=before;}
+});
