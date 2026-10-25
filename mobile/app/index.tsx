@@ -61,7 +61,7 @@ export default function Home() {
       {!!error && <Text accessibilityRole="alert" style={styles.message}>{error}</Text>}
       {submitted && !loading && !error && <>
         <Text style={styles.section}>{results.length ? 'Søkeresultater' : 'Ingen treff'}</Text>
-        {!results.length && <Text style={styles.subtitle}>{submitted.barcode ? 'Strekkoden finnes ikke i datakilden.' : 'Prøv et annet søkeord eller velg «Alle land». Landopplysninger kan mangle selv om varen selges her.'}</Text>}
+        {!results.length && <Text style={styles.subtitle}>{submitted.barcode ? 'Strekkoden finnes ikke i datakilden.' : 'Prøv et annet søkeord, strekkode eller «Alle land». Søkeindeksen kan mangle nyere varer selv når de finnes i produktdatabasen.'}</Text>}
         {results.map(p => <Pressable key={p.code} accessibilityRole="button" accessibilityLabel={'Vis ' + p.name}
           onPress={() => router.push({ pathname: '/product/[id]', params: { id: p.code } })} style={styles.product}>
           {p.image ? <Image source={{ uri: p.image }} style={styles.thumb} resizeMode="contain" /> : <View style={styles.thumb} />}
