@@ -138,3 +138,19 @@ test('source links remain available only after explicitly opening source section
  assert.equal(flatten(content).filter(x=>x.type==='SourceLink').length,2);
  assert.equal(h.routes.length,0);
 });
+
+
+test('a failed remote comparison photo shows a visible fallback instead of blank space',()=>{
+ const before=first.image;
+ first.image='https://example.invalid/test-image.jpg';
+ try {
+  const h=harness();
+  const image=flatten(h.render()).find(n=>n.type==='Image'&&n.props?.source?.uri===first.image);
+  assert.ok(image,'an image must be attempted first');
+  assert.equal(typeof image.props.onError,'function');
+  image.props.onError();
+  const after=h.render();
+  assert.match(text(after),/Kunne ikke laste bildet/);
+  assert.equal(h.routes.length,0);
+ } finally {first.image=before;}
+});
