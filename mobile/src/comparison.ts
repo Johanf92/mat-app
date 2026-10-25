@@ -40,8 +40,10 @@ export type ComparedAdditive = {
 };
 /** Reuses the same reconciled per-product E-code evidence as the detail page. */
 export function additiveEvidenceRows(a: FoodProduct, b: FoodProduct): ComparedAdditive[] {
-  const left=productAdditiveEvidence(a).items;
-  const right=productAdditiveEvidence(b).items;
+  // The product page may visually group E340 with its subtype. Use all
+  // observed codes here so the grouped parent is never misreported as absent.
+  const left=productAdditiveEvidence(a).observed;
+  const right=productAdditiveEvidence(b).observed;
   const aCodes=new Map(left.map(row=>[row.code,row]));
   const bCodes=new Map(right.map(row=>[row.code,row]));
   const codes=new Set([...aCodes.keys(),...bCodes.keys()]);

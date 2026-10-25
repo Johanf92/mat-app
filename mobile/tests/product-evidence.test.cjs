@@ -52,3 +52,12 @@ test('product and comparison cannot infer E290 just because source text says kul
  assert.equal(data.items.length,0);
  assert.equal(data.title,'Tilsetningsstoffer');
 });
+
+
+test('grouped product display keeps all observed parent and subtype codes available to comparisons',()=>{
+ const e=productAdditiveEvidence({ingredients:'E340(ii)',additives:['en:e340','en:e340ii']});
+ assert.deepEqual(e.items.map(x=>x.code),['E340II']);
+ assert.deepEqual(new Set(e.observed.map(x=>x.code)),new Set(['E340','E340II']));
+ assert.equal(e.observed.find(x=>x.code==='E340').evidence,'field');
+ assert.equal(e.observed.find(x=>x.code==='E340II').evidence,'both');
+});

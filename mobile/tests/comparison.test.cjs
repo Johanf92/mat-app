@@ -252,3 +252,17 @@ test('product and comparison use the same reconciled E-code evidence',()=>{
  assert.equal(rows.find(x=>x.code==='E472E').aEvidence,'ingredients');
  assert.equal(rows.find(x=>x.code==='E472E').bEvidence,'not-recorded');
 });
+
+
+test('comparison does not misreport a visually grouped parent E340 as absent',()=>{
+ const p={...a,ingredients:'E340(ii)',additives:['en:e340','en:e340ii']};
+ const q={...b,ingredients:'E340',additives:['en:e340']};
+ const rows=additiveEvidenceRows(p,q);
+ assert.deepEqual(rows.map(r=>r.code),['E340II','E340']);
+ const parent=rows.find(r=>r.code==='E340');
+ assert.equal(parent.aEvidence,'field','parent is present even though the product UI groups it');
+ assert.equal(parent.bEvidence,'both');
+ const child=rows.find(r=>r.code==='E340II');
+ assert.equal(child.aEvidence,'both');
+ assert.equal(child.bEvidence,'not-recorded');
+});

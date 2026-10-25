@@ -1,5 +1,5 @@
 import type { FoodProduct } from './openFoodFacts';
-import { summarizeAdditives, normalizeAdditive, type AdditiveInfo } from './additives';
+import { summarizeAdditives, normalizeAdditive, additiveInfo, type AdditiveInfo } from './additives';
 import { ingredientCodeEvidence } from './ingredientEvidence';
 
 export type AdditiveEvidenceState = 'both' | 'ingredients' | 'field' | 'not-recorded';
@@ -10,6 +10,8 @@ export type ProductAdditiveRow = {
 };
 export type ProductAdditiveEvidence = {
   items: ProductAdditiveRow[];
+  /** All explicit codes, including family parents suppressed only in the product display. */
+  observed: ProductAdditiveRow[];
   unrecognized: string[];
   rawTags: string[];
   groupedParents: string[];
@@ -32,13 +34,17 @@ export function productAdditiveEvidence(p: Pick<FoodProduct,'ingredients'|'addit
   const summarized=summarizeAdditives([...p.additives,...mentioned]);
   const fromIngredients=new Set(mentioned);
   const fromField=new Set(p.additives.map(normalizeAdditive).filter((s):s is string=>s!==null));
-  const items=summarized.items.map(info=>{
-    const text=fromIngredients.has(info.id),field=fromField.has(info.id);
+  const allCodes=new Set([...mentioned,...fromField]);
+  const observed=[...allCodes].map(code=>{
+    const info=additiveInfo(code)!;
+    const text=fromIngredients.has(code),field=fromField.has(code);
     const evidence: AdditiveEvidenceState=text&&field?'both':text?'ingredients':'field';
-    return {code:info.id,info,evidence};
+    return {code,info,evidence};
   });
+  const index=new Map(observed.map(row=>[row.code,row]));
+  const items=summarized.items.map(info=>index.get(info.id)!);
   return {
-    items,unrecognized:summarized.unrecognized,
+    items,observed,unrecognized:summarized.unrecognized,
     rawTags:[...p.additives],groupedParents:summarized.groupedParents,
     groupingNote:summarized.groupingNote,
     title:summarized.title,

@@ -120,3 +120,6 @@ Automatiske forslag bruker søkeindeksen i Open Food Facts og kan derfor være e
 For vanlig cola og sukkerfri cola brukes nå også registrerte næringsverdier når pakningsdubletter fra samme merke grupperes. Produktoppføringer fra samme merke som har ulik energi, sukkerarter eller karbohydratinnhold blir **ikke automatisk gjemt som samme oppskrift**. Dette er kildebasert presentasjonslogikk, ikke en påstand om at oppskriften faktisk er endret.
 
 Forslag kan fortsatt være feil når selve produktregistreringen er feil. Det kan ikke løses helt uten verifiserte etiketter eller bedre kildeopplysninger.
+
+
+E340-familier kan være visuelt samlet på produktsiden for å unngå å telle samlegruppen som et ekstra stoff. Den underliggende kildedokumentasjonen **beholder likevel både parent og underkode** i sammenligningen, slik at en visuelt skjult samlegruppe aldri feilaktig blir omtalt som fraværende.
