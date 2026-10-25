@@ -14,9 +14,22 @@ const entries: Record<string, Omit<AdditiveInfo, 'id' | 'source'> & { source?: s
   E331: { name: 'Natriumsitrater', role: 'Surhetsregulerende middel', description: 'Salter av sitronsyre som blant annet brukes til å regulere surhetsgraden. E-nummeret sier ikke hvor mye som er brukt i produktet.', source: NORWEGIAN_ADDITIVES_SOURCE },
   E950: { name: 'Acesulfam K', role: 'Søtstoff', description: 'Et sterkt søtende søtstoff som kan brukes i drikker med lite eller uten tilsatt sukker. Mengden i denne varen er ikke oppgitt her.', source: SWEETENERS_SOURCE },
   E951: { name: 'Aspartam', role: 'Søtstoff', description: 'Et sterkt søtende søtstoff. Aspartam inneholder fenylalanin, som personer med fenylketonuri (PKU / Føllings sykdom) må ta hensyn til. Kontroller alltid den faktiske merkingen på emballasjen.', source: SWEETENERS_SOURCE },
+  E202: { name: 'Kaliumsorbat', role: 'Konserveringsmiddel', description: 'Brukes for å begrense vekst av blant annet gjær og muggsopp i noen matvarer. Koden alene sier ikke noe om mengden i dette produktet.', source: NORWEGIAN_ADDITIVES_SOURCE },
+  E330: { name: 'Sitronsyre', role: 'Surhetsregulerende middel', description: 'Brukes for å regulere surheten i mat og drikke. Sitronsyre finnes også naturlig i blant annet sitrusfrukter, men oppføring av E330 forteller ikke hvordan stoffet i denne varen er fremstilt.', source: NORWEGIAN_ADDITIVES_SOURCE },
+  E407: { name: 'Karragenan', role: 'Fortyknings- og stabiliseringsmiddel', description: 'Utvinnes fra rødalger og brukes for å gi eller stabilisere konsistensen i enkelte matvarer. E-nummeret forteller ikke hvilken mengde som er brukt, eller noe sikkert om individuell helserisiko.', source: NORWEGIAN_ADDITIVES_SOURCE },
+  E410: { name: 'Johannesbrødkjernemel', role: 'Fortykningsmiddel', description: 'Uttrukket fra frøene til johannesbrødtreet. Brukes til å tykne eller stabilisere konsistensen i matvarer.', source: NORWEGIAN_ADDITIVES_SOURCE },
+  E440: { name: 'Pektiner', role: 'Gelerings- og fortykningsmiddel', description: 'Stoffer fra plantecellevegger, blant annet i frukt, som kan bidra til å tykne eller danne gelé i matvarer.', source: NORWEGIAN_ADDITIVES_SOURCE },
+  E472B: { name: 'Melkesyreestere av mono- og diglyserider av fettsyrer', role: 'Emulgator', description: 'Brukes for å få ingredienser som fett og vann til å blande seg eller holde seg jevnt fordelt. Navnet viser til typen ester, ikke at produktet nødvendigvis inneholder melk.', source: NORWEGIAN_ADDITIVES_SOURCE },
   E340: { name: 'Kaliumfosfater', role: 'Surhetsregulerende middel', description: 'Samlebetegnelse for kaliumfosfater. Ulike varianter har egne undernumre.' },
   E340II: { name: 'Dikaliumfosfat', role: 'Surhetsregulerende middel', description: 'En variant i E340-familien. Kan brukes til å regulere surhetsgraden.' },
 };
+/** Show the actual authority behind the linked explanation, not a hard-coded UK label. */
+export function additiveSourceLabel(url: string): string {
+  if (url.startsWith('https://www.mattilsynet.no/')) return 'Kilde: Mattilsynet';
+  if (url.startsWith('https://www.efsa.europa.eu/')) return 'Kilde: EFSA';
+  if (url.startsWith('https://www.gov.uk/')) return 'Kilde: britisk myndighetsoversikt';
+  return 'Les om tilsetningsstoffet hos kilden';
+}
 // Explicit relationships only. A shared numeric prefix is not enough to merge records.
 const FAMILIES: Readonly<Record<string, readonly string[]>> = {
   E340: ['E340I', 'E340II', 'E340III'],
