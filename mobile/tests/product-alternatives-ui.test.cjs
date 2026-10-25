@@ -21,7 +21,7 @@ const product = {
   additives: [], allergens: [], countries: ['en:norway'], categories: ['en:oat-drinks'], modifiedAt: null,
 };
 const market = { code: 'no', name: 'Norge', tag: 'en:norway' };
-function harness({ supported = true, find = async () => [] } = {}) {
+function harness({ supported = true, find = async () => [], note = () => null } = {}) {
   const state = [];
   let cursor = 0;
   const calls = [], routes = [];
@@ -47,6 +47,7 @@ function harness({ supported = true, find = async () => [] } = {}) {
     '../../src/alternatives': {
       comparableCategory: () => supported ? 'en:oat-drinks' : null,
       productProfile: () => supported ? { kind: 'oat-drink', label: 'havredrikker', category: 'en:oat-drinks' } : null,
+      candidateNote: note,
       findAlternatives: async (p, m) => { calls.push({ product: p, market: m }); return find(p, m); },
     },
   };
@@ -155,7 +156,7 @@ test('result opens another product internally', async () => {
   assert.equal(h.routes[1].pathname, '/compare');
   assert.equal(h.routes[1].params.left, product.code);
   assert.equal(h.routes[1].params.right, other.code);
-  assert.match(text(panel), /ikke en garanti/);
+  assert.match(text(panel), /Kontroller variant/);
 });
 test('only product-source link is explicitly labelled external and inside source accordion', () => {
   const all = nodes(harness().render());
@@ -174,4 +175,13 @@ test('manual comparison remains reachable with unsupported categories', () => {
   assert.equal(h.routes[0].pathname, '/compare');
   assert.equal(h.routes[0].params.left, product.code);
   assert.equal(h.routes[0].params.right, undefined);
+});
+
+test('data discrepancy note appears beside the candidate without making a health claim', async () => {
+ const other = { ...product, code: '12345679', name: 'Another yogurt' };
+ const h = harness({ find: async () => [other], note: () => 'Stor forskjell i karbohydrater. Kontroller variant og næringsverdier.' });
+ byId(h.render(), 'find-alternatives').props.onPress(); await flush();
+ const panel = byId(h.render(), 'product-alternatives');
+ assert.match(text(panel), /Stor forskjell i karbohydrater/);
+ assert.doesNotMatch(text(panel), /sunnere|sunnest|anbefalt/);
 });
