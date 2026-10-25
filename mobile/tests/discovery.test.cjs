@@ -7,13 +7,13 @@ const ts=require('typescript');
 const source=fs.readFileSync(path.resolve(__dirname,'../src/discovery.ts'),'utf8');
 const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
 let sameKind=true;
-const module={exports:{}};
-vm.runInNewContext(js,{module,exports:module.exports,require(id){
+const mockedModule={exports:{}};
+vm.runInNewContext(js,{module:mockedModule,exports:mockedModule.exports,require(id){
  if(id==='./alternatives')return {productProfile:()=>({kind:'oats-plain'}),matchesProfile:()=>sameKind};
  if(id==='./productDataStatus')return {productDataStatus:p=>({issues:p.invalid?['conflict']:[]})};
  throw Error(id);
 }});
-const {verifiedProcessingDiscovery}=module.exports;
+const {verifiedProcessingDiscovery}=mockedModule.exports;
 const a={code:'11111111',name:'Havregryn',nova:4};
 const b={code:'22222222',name:'Havregryn',nova:2};
 test('one directly verified lower NOVA variant may qualify',()=>{
