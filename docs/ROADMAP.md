@@ -22,6 +22,7 @@
 - [x] Energi fra kilojoule omregnes til omtrentlige kcal bare når direkte kcal mangler, med kildeforklaring
 - [x] Sterke motsetninger mellom oppgitte kcal og kJ varsles uten at kildens kcal blir endret
 - [x] Søkeduplikater med samme strekkode velger én best dokumentert, konsistent registrering fremfor siste treff
+- [x] Syntetiske offline-data dekker ti vanlige dagligvarekategorier, mangelfulle oppføringer og forskjell på pulver og tilberedt produkt
 - [x] Nutri-Score som frivillig, separat og kildebasert ernæringsprofil ved siden av NOVA, uten lokal beregning
 - [x] Kort faktabasert oppsummering på produktsiden
 - [x] Forsiktig alternativmatching for grovbrød, loff, rugknekkebrød, cornflakes, jordbærsyltetøy og tydelig merket tomatsuppe

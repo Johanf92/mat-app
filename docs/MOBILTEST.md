@@ -38,3 +38,14 @@ Noter produktnavn/strekkode, hvilken knapp som ble brukt og hva som skjedde. Ett
 - **TINE yoghurt gresk type:** Åpne «Tilsetningsstoffer» og se at tomt E-kodefelt forklares som manglende registrering, ikke som bekreftet fri for E-stoffer. Åpne «Allergenopplysninger»: `en:milk` og `no:lettmelk` skal vises som «Melk», mens råkodene finnes under kilder.
 - **Oatly iKaffe vs Coop Kaurajuoma:** Et produkt uten barista-/kaffemerking i navnet skal ikke automatisk anbefales som baristaalternativ selv om en gammel søkeindeks har en slik kategorikode. Manuell sammenligning er fortsatt mulig og skal beskrive dem som havredrikkvarianter, ikke som urelaterte produktgrupper.
 - **Brød og havredrikk:** Sjekk om E170 og E472e nå har faktiske stoffnavn, funksjon og kilde. Fravær av en oppføring i feltet er fremdeles ikke bevis for fravær i varen.
+
+
+## Punkt 3 – kontroll av ufullstendige kildedata
+
+- Åpne et produkt der NOVA eller Nutri-Score mangler. Appen skal vise «ikke oppgitt», ikke finne på en karakter eller bruke NOVA som erstatning for Nutri-Score.
+- Åpne gjerne et produkt der energi mangler, men kilojoule (kJ) er registrert. Da kan omtrentlige kcal vises, og kildedetaljene skal forklare omregningen. Du trenger **ikke** lete etter et slikt produkt hvis du ikke finner det naturlig.
+- I «Kort fortalt» skal et produkt med svært mangelfulle næringsdata få én kort og nøktern merknad, ikke en helsekarakter.
+- I søkeresultatene skal samme strekkode ikke vises to ganger på grunn av overlappende oppføringer fra søkeindeksen.
+- Test gjerne grovbrød, havregryn, kefir og en ferdigrett. Det er ikke et krav å skanne fysisk emballasje: søkeord og kjente strekkoder fungerer også.
+
+Alle automatiske tester bruker en **syntetisk** samling med ulike norske varekategorier for å prøve manglende felt, ekte nuller, feil data og kJ/kcal, uten å påstå at tallene er godkjente produsentopplysninger.

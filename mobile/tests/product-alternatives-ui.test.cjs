@@ -55,7 +55,10 @@ function harness({ supported = true, find = async () => [], note = () => null, t
     },
     '../../src/ingredientTerms': { ingredientTerms: terms },
     '../../src/allergens': { formatAllergenTags: tags => tags.includes('en:milk') ? ['Melk'] : tags },
-    '../../src/productDataStatus': { productDataStatus: () => ({headline:'Oppgitt i kilden: 7 av 7 næringsfelt.',notes:[]}) },
+    '../../src/productDataStatus': { productDataStatus: p => ({
+      headline:'Oppgitt i kilden: 7 av 7 næringsfelt.',notes:[],
+      summaryNotice:p.name==='Mangelfulle data'?'Viktige opplysninger mangler i datakilden. Se «Kilde og datakvalitet».':null
+    }) },
     '../../src/nutriScore': {nutriScoreLabel: x => x ? String(x).toUpperCase() : 'Ikke oppgitt',
       nutriScoreDescription: x => x ? 'Fra kilden: '+x : 'Ikke registrert',
       NUTRI_SCORE_SOURCE:'https://example.org/nutriscore',NORWEGIAN_LABEL_SOURCE:'https://example.org/nokkelhullet'},
@@ -306,4 +309,26 @@ test('product page shows E-code explicitly mentioned in ingredients even with no
   assert.match(text(item),/Kun nevnt i ingredienslisten/);
   assert.equal(byId(tree,'missing-e-codes'),undefined);
  }finally{product.ingredients=old;product.additives=tags;}
+});
+
+
+test('important missing source facts show one compact caution without redesigning product view',()=>{
+ const original=product.name;
+ try{
+  product.name='Mangelfulle data';
+  const h=harness();
+  const caveat=byId(h.render(),'product-data-caveat');
+  assert.ok(caveat);
+  assert.match(text(caveat),/Viktige opplysninger mangler/);
+  assert.match(text(caveat),/Kilde og datakvalitet/);
+ }finally{product.name=original;}
+});
+test('converted energy is transparently marked approximate on product nutrient row',()=>{
+ const old=product.energyConvertedFromKJ;
+ try{
+  product.energyConvertedFromKJ=true;
+  const h=harness();
+  const all=text(h.render());
+  assert.match(all,/ca\. 61/);
+ }finally{product.energyConvertedFromKJ=old;}
 });
