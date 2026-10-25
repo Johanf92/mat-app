@@ -440,3 +440,26 @@ test('stale beverage categories cannot turn named dry oats into oat drink sugges
  assert.equal(productProfile(beverage)?.kind,'oat-drink');
  assert.deepEqual(relevantAlternatives(dry,[beverage],market),[]);
 });
+
+test('ketchup variants match without mixing unrelated sauces',()=>{
+ const original=next('9700000000001',{name:'Heinz Tomato Ketchup Original',brand:'Heinz',ingredients:'Tomat, eddik, sukker',nova:3});
+ const reduced=next('9700000000002',{name:'Heinz ketchup mindre sukker',brand:'Heinz',ingredients:'Tomat, eddik, søtstoff',nova:4});
+ const spicy=next('9700000000003',{name:'Heinz spicy chili ketchup',brand:'Heinz'});
+ const bbq=next('9700000000004',{name:'BBQ saus',brand:'Heinz',categories:['en:ketchups']});
+ assert.equal(productProfile(original)?.kind,'tomato-ketchup');
+ assert.equal(productProfile(reduced)?.kind,'tomato-ketchup');
+ assert.equal(productProfile(spicy),null);
+ assert.equal(productProfile(bbq),null);
+ assert.deepEqual(relevantAlternatives(reduced,[original,spicy,bbq],market).map(p=>p.code),[original.code]);
+});
+test('mackerel in tomato filet and chopped tins are variants, other fish excluded',()=>{
+ const whole=next('9700000000011',{name:'Makrell i tomat hel filet 160g',brand:'Stabburet',ingredients:'Makrell, tomatsaus',nova:3});
+ const chopped=next('9700000000012',{name:'Makrell i tomat hakket 110g',brand:'Stabburet',ingredients:'Makrell, tomat, fortykningsmiddel',nova:4});
+ const tuna=next('9700000000013',{name:'Tunfisk i tomat',brand:'Stabburet'});
+ const spicy=next('9700000000014',{name:'Makrell i tomat chili',brand:'Stabburet'});
+ assert.equal(productProfile(whole)?.kind,'mackerel-tomato');
+ assert.equal(productProfile(chopped)?.kind,'mackerel-tomato');
+ assert.equal(productProfile(tuna),null);
+ assert.equal(productProfile(spicy),null);
+ assert.deepEqual(relevantAlternatives(chopped,[whole,tuna,spicy],market).map(p=>p.code),[whole.code]);
+});

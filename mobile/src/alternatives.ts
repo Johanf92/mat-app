@@ -13,7 +13,8 @@ export type ProductKind =
   | 'milk-low-fat' | 'milk-whole'
   | 'bread-wholegrain' | 'bread-white' | 'crispbread-rye'
   | 'corn-flakes' | 'jam-strawberry'
-  | 'tomato-soup-ready' | 'tomato-soup-powder';
+  | 'tomato-soup-ready' | 'tomato-soup-powder'
+  | 'tomato-ketchup' | 'mackerel-tomato';
 export type MatchProfile = {
   kind: ProductKind;
   label: string;
@@ -197,6 +198,21 @@ function tomatoSoupProfile(p:FoodProduct):MatchProfile|null {
    :{kind:'tomato-soup-ready',label:'serveringsklar tomatsuppe',category:'en:tomato-soups',fallback:'tomatsuppe ferdig'};
 }
 
+function pantryVariantProfile(p: FoodProduct): MatchProfile | null {
+  const n = fold(p.name);
+  // Names, not broad tags, must explicitly identify the food. Reject sauces
+  // and flavoured fish products with different practical uses.
+  if (/\b(ketchup|ketsjup)\b/.test(n)) {
+    if (/curry|karri|chili|chilli|spicy|hot|sterk|sriracha|bbq|barbecue|banan|banana|pizza|relish|sennep|mustard/.test(n)) return null;
+    return { kind:'tomato-ketchup',label:'tomatketchup',category:'en:ketchups',fallback:'ketchup' };
+  }
+  if (/\b(makrell|mackerel)\b/.test(n) && /\b(tomat|tomato)\b/.test(n)) {
+    if (/salat|salad|pasta|pizza|middag|ready[ -]*meal|chili|chilli|pepper|sterk|spicy/.test(n)) return null;
+    return { kind:'mackerel-tomato',label:'makrell i tomat',category:'en:canned-mackerels',fallback:'makrell i tomat' };
+  }
+  return null;
+}
+
 function colaProfile(p: FoodProduct): MatchProfile | null {
   const name = fold(p.name);
   const category = fold(p.categories.join(' '));
@@ -241,6 +257,8 @@ function kefirProfile(p: FoodProduct): MatchProfile | null {
  * "naturell" solely because the title contains "gresk yoghurt".
  */
 export function productProfile(p: FoodProduct): MatchProfile | null {
+  const pantry = pantryVariantProfile(p);
+  if (pantry) return pantry;
   const cola = colaProfile(p);
   if (cola) return cola;
   const kefir = kefirProfile(p);
@@ -276,6 +294,8 @@ export function fallbackProductIcon(p: FoodProduct): string {
  const kind=productProfile(p)?.kind;
  if(!kind)return '🍽️';
  if(kind.startsWith('cola'))return '🥤';
+ if(kind==='tomato-ketchup')return '🍅';
+ if(kind==='mackerel-tomato')return '🐟';
  if(kind==='oats-plain'||kind==='oats-gluten-free'||kind==='corn-flakes')return '🥣';
  if(kind==='bread-wholegrain'||kind==='bread-white')return '🍞';
  if(kind==='crispbread-rye')return '🥖';
@@ -349,6 +369,17 @@ function variantKey(p: FoodProduct, kind: ProductKind): string {
   const colaSignature=colaMetrics.filter(x=>x!==null).length>=2
     ?colaMetrics.map(x=>x===null?'?':x.toFixed(2)).join('|')
     :identity(p);
+  if (kind === 'tomato-ketchup') {
+    const name=fold(p.name);
+    const reduced=/mindre[ -]*sukker|redusert[ -]*sukker|reduced[ -]*sugar|less[ -]*sugar|sukkerfri|sugar[ -]*free|uten[ -]*tilsatt[ -]*sukker/.test(name);
+    return kind+'|'+brand+'|'+(reduced?'reduced':'regular')+'|'+colaSignature;
+  }
+  if (kind === 'mackerel-tomato') {
+    const name=fold(p.name);
+    const preparation=/hakket|grovhakket|chopped|shredded/.test(name)?'chopped'
+      :/hel[ -]*filet|filet|fillet/.test(name)?'fillet':'unspecified';
+    return kind+'|'+brand+'|'+preparation+'|'+colaSignature;
+  }
   if (kind === 'cola-regular') return kind + '|' + brand + '|' + colaSignature;
   if (kind === 'cola-sugar-free') {
     // Light and Zero are both sugar-free, but their formulations can differ.
