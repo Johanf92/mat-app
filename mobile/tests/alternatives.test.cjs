@@ -226,3 +226,71 @@ test('TINE naturell kefir has a conservative same-type alternatives search', asy
   assert.equal(calls.length,1);
   assert.equal(calls[0].args[0],'kefir');
 });
+
+
+test('naturell skyr is supported, flavoured skyr and drinking skyr are excluded',()=>{
+ const source=next('9510000000001',{name:'Skyr naturell',brand:'Tine',ingredients:'Skummet melk, syrningskultur'});
+ const valid=next('9510000000002',{name:'Skyr Natural',brand:'Q',ingredients:'Milk, culture'});
+ const flavoured=next('9510000000003',{name:'Skyr Jordbær',brand:'Brand',ingredients:'Melk, jordbær'});
+ const sweet=next('9510000000004',{name:'Skyr naturell',brand:'Sweet',ingredients:'Melk, sukker, kultur'});
+ const drink=next('9510000000005',{name:'Skyr drikk naturell',brand:'Drink',ingredients:'Melk, kultur'});
+ const ambiguous=next('9510000000006',{name:'Skyr',brand:'Mystery',ingredients:undefined});
+ assert.equal(productProfile(source)?.kind,'skyr-plain');
+ assert.equal(productProfile(ambiguous),null);
+ assert.deepEqual(relevantAlternatives(source,[valid,flavoured,sweet,drink,ambiguous],market).map(p=>p.code),[valid.code]);
+});
+test('naturell cottage cheese is separate from yoghurt and flavoured variants',()=>{
+ const source=next('9510000000010',{name:'Cottage Cheese Naturell',brand:'Tine',ingredients:'Melk, melkesyrekultur'});
+ const valid=next('9510000000011',{name:'Cottage cheese original',brand:'Q',ingredients:'Milk, culture'});
+ const pesto=next('9510000000012',{name:'Cottage Cheese Pesto',brand:'Another',ingredients:'Melk, kultur, pesto'});
+ const yogurt=next('9510000000013',{name:'Naturell yoghurt',brand:'Q',ingredients:'Melk, kultur'});
+ assert.equal(productProfile(source)?.kind,'cottage-cheese-plain');
+ assert.deepEqual(relevantAlternatives(source,[valid,pesto,yogurt],market).map(p=>p.code),[valid.code]);
+});
+test('plain rolled oats stay separate from cereal mixes and explicitly gluten-free oats',()=>{
+ const source=next('9510000000020',{name:'Havregryn store',brand:'First',ingredients:'Havregryn 100 %',categories:[]});
+ const valid=next('9510000000021',{name:'Lettkokte Havregryn',brand:'Other',ingredients:'Havre'});
+ const gf=next('9510000000022',{name:'Glutenfri havregryn',brand:'Glutenfri',ingredients:'Glutenfri havregryn'});
+ const sweet=next('9510000000023',{name:'Havregryn med jordbær',brand:'Mix',ingredients:'Havre, sukker, bær'});
+ const granola=next('9510000000024',{name:'Granola havregryn',brand:'Granola',ingredients:'Havregryn, nøtter'});
+ assert.equal(productProfile(source)?.kind,'oats-plain');
+ assert.equal(productProfile(gf)?.kind,'oats-gluten-free');
+ assert.deepEqual(relevantAlternatives(source,[valid,gf,sweet,granola],market).map(p=>p.code),[valid.code]);
+ assert.deepEqual(relevantAlternatives(gf,[source,valid],market),[]);
+ assert.match(relatedVariantComparisonNote(source,gf),/ikke dokumentasjon/);
+});
+test('whole milk and low-fat milk are distinct, and lactose-free labels do not cross',()=>{
+ const low=next('9510000000030',{name:'Lettmelk',brand:'TINE',ingredients:'Lettmelk'});
+ const lowQ=next('9510000000031',{name:'Lettmelk 1 %',brand:'Q',ingredients:'Melk'});
+ const whole=next('9510000000032',{name:'Helmelk',brand:'Q',ingredients:'Melk'});
+ const lacto=next('9510000000033',{name:'Lettmelk laktosefri',brand:'TINE',ingredients:'Melk, laktase'});
+ const flavoured=next('9510000000034',{name:'Lettmelk sjokolade',brand:'Chocolate',ingredients:'Melk, kakao'});
+ const plant=next('9510000000035',{name:'Lettmelk',brand:'Plant',ingredients:'Havre, vann'});
+ assert.equal(productProfile(low)?.kind,'milk-low-fat');
+ assert.equal(productProfile(whole)?.kind,'milk-whole');
+ assert.deepEqual(relevantAlternatives(low,[lowQ,whole,lacto,flavoured,plant],market).map(p=>p.code),[lowQ.code]);
+ assert.deepEqual(relevantAlternatives(lacto,[lowQ,low],market),[]);
+ assert.match(relatedVariantComparisonNote(low,whole),/lettmelk og den andre helmelk/);
+});
+test('new profiles search only in selected market with one controlled call',async()=>{
+ const combos=[
+  ['Skyr naturell','Melk, kultur','skyr'],
+  ['Cottage cheese naturell','Melk, kultur','cottage cheese'],
+  ['Havregryn','Havregryn','havregryn'],
+  ['Lettmelk','Melk','lettmelk'],
+  ['Helmelk','Melk','helmelk'],
+ ];
+ for(const [name,ingredients,fallback] of combos){
+  const src=next('9510000000040',{name,brand:'Tine',ingredients,categories:[]});
+  assert.ok(productProfile(src),name);
+  calls.length=0;textResults=[
+   next('9510000000041',{name,brand:'Other',ingredients,countries:['en:sweden']}),
+  ];
+  assert.deepEqual(await findAlternatives(src,market),[]);
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].type,'text');
+  assert.equal(calls[0].args[0],fallback);
+  assert.equal(calls[0].args[1],market);
+ }
+ textResults=[];
+});

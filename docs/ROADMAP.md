@@ -14,10 +14,15 @@
 - [x] Egen matching for vanlig cola og sukkerfri cola, uten energidrikker og spesialsmaker
 - [x] Synlige forbehold ved store karbohydratforskjeller og kildeverdier som ikke stemmer overens
 - [x] Automatiske TypeScript- og logikktester i GitHub Actions
+- [x] Støtte for skyr naturell, cottage cheese naturell, havregryn, lettmelk og helmelk med variantfilter
+- [x] Separate søk for havregryn registrert som glutenfri og annen havre, uten å love allergen-/cøliakisikkerhet
+- [x] Forklaringer av vanlige funksjonsord i ingredienslister, med Mattilsynet som kilde
+- [x] Synlig oversikt over manglende næringsdata og interne motsetninger i kilden
 
 ## Prioriteres videre
 - [ ] Test og forbedre reelle treff for iKaffe, gresk yoghurt og flere norske produktkategorier
 - [ ] Bedre kategoritaksonomi og norsk markedskvalitet, uten falske tilgjengelighetsgarantier
+- [ ] Mobiltest av skyr, cottage cheese, havregryn, melk og ingrediensord etter samlet utviklingsrunde
 - [ ] Trygge, kildebelagte ingrediensforklaringer uten å omskrive kildens ingrediensliste
 - [ ] Større, vedlikeholdbart og kildebelagt E-stoffregister
 - [ ] Favoritter, historikk og mulighet til å rette feil i datakilden

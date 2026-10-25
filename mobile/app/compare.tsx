@@ -8,6 +8,7 @@ import { type CompareFocus, COMPARE_OPTIONS, METRICS, comparisonInsight, metricA
 import { productProfile, candidateNote, relatedVariantComparisonNote } from '../src/alternatives';
 import { additiveInfo, additiveSourceLabel, formatAdditiveCode, summarizeAdditives, type AdditiveInfo } from '../src/additives';
 import { displayIngredientText } from '../src/ingredientEvidence';
+import { productDataStatus } from '../src/productDataStatus';
 import { colors, InfoSheet, NovaBadge, SourceLink } from '../src/ui';
 
 type DetailId = 'focus' | 'nutrition' | 'ingredients' | 'additives' | 'sources';
@@ -220,7 +221,11 @@ export default function Compare() {
         <DetailSection id="sources" title="Kilder og datakvalitet" open={detailOpen==='sources'} onToggle={()=>toggleDetail('sources')}>
           <Text style={s.body}>Opplysningene kommer fra Open Food Facts og kan være feil eller ufullstendige.</Text>
           <Text style={s.note}>Produkt A · Strekkode {left.code}</Text>
+          <Text testID="compare-data-status-A" style={s.note}>{productDataStatus(left).headline}</Text>
+          {productDataStatus(left).notes.map(note=><Text key={'a-'+note} style={s.note}>• {note}</Text>)}
           <Text style={s.note}>Produkt B · Strekkode {right.code}</Text>
+          <Text testID="compare-data-status-B" style={s.note}>{productDataStatus(right).headline}</Text>
+          {productDataStatus(right).notes.map(note=><Text key={'b-'+note} style={s.note}>• {note}</Text>)}
           <SourceLink label="Kilde for produkt A (åpner nettleseren)" url={'https://world.openfoodfacts.org/product/'+left.code}/>
           <SourceLink label="Kilde for produkt B (åpner nettleseren)" url={'https://world.openfoodfacts.org/product/'+right.code}/>
         </DetailSection>

@@ -7,7 +7,10 @@ import { type Market } from './catalog';
  */
 export type ProductKind =
   | 'oat-barista' | 'oat-drink' | 'greek-plain' | 'plain-yogurt'
-  | 'cola-regular' | 'cola-sugar-free' | 'kefir-plain';
+  | 'cola-regular' | 'cola-sugar-free' | 'kefir-plain'
+  | 'skyr-plain' | 'cottage-cheese-plain'
+  | 'oats-plain' | 'oats-gluten-free'
+  | 'milk-low-fat' | 'milk-whole';
 export type MatchProfile = {
   kind: ProductKind;
   label: string;
@@ -58,6 +61,65 @@ function plainYogurt(p: FoodProduct): boolean {
 function isDrink(p: FoodProduct): boolean {
   return /(drink|drikke|drikk|melk|milk|beverage|barista|ikaffe|kaffe|coffee)/.test(textOf(p));
 }
+
+/**
+ * These are narrow, name-led matches. Broad tags such as "dairy" and "cereals"
+ * must never make unrelated foods automatic substitutes.
+ */
+export function labeledGlutenFree(p: FoodProduct): boolean {
+  return /glutenfri|gluten[\s-]*free|sans gluten|glutenfrei/.test(textOf(p))
+    || p.categories.some(tag=>/gluten-free/.test(tag));
+}
+function hasSweetExtras(p: FoodProduct): boolean {
+  const s=fold(p.ingredients ?? '');
+  return /sukker|sugar|sirup|syrup|honning|honey|frukt|fruit|baer|berry|jordbaer|vanil|vanilla|kakao|cocoa|sjokolade|chocolate|aroma|sweeten|sotstoff|flavour|flavor/.test(s);
+}
+function skyrProfile(p: FoodProduct): MatchProfile | null {
+  const n=fold(p.name);
+  if(!/(^|[^a-z])skyr(?=$|[^a-z])/.test(n)
+      || /drikk|drink|shake|smoothie|is(krem)?|dessert/.test(n)
+      || hasFlavourLabel(p) || hasSweetExtras(p)) return null;
+  if(!explicitlyPlain(p) && !plainDairyIngredients(p)) return null;
+  return {kind:'skyr-plain',label:'skyr naturell',category:'en:skyrs',fallback:'skyr'};
+}
+function cottageCheeseProfile(p: FoodProduct): MatchProfile | null {
+  const n=fold(p.name);
+  if(!/cottage[\s-]*cheese|hytteost/.test(n)
+      || /smak|med |urter|gresslok|chili|chilli|pesto|hvitlok|garlic|pepper|tomat|tomato|olive|oliven/.test(n)
+      || hasFlavourLabel(p) || hasSweetExtras(p)) return null;
+  if(!explicitlyPlain(p) && !/\b(original|classic)\b/.test(n) && !plainDairyIngredients(p)) return null;
+  return {kind:'cottage-cheese-plain',label:'cottage cheese naturell',category:'en:cottage-cheeses',fallback:'cottage cheese'};
+}
+function oatsProfile(p: FoodProduct): MatchProfile | null {
+  const n=fold(p.name);
+  if(!/(^|[^a-z])(havregryn|rolled[\s-]*oats|oat[\s-]*flakes)(?=$|[^a-z])/.test(n)
+    || hasFlavourLabel(p) || /gr[yø]t|porridge|muesli|musli|granola|kjeks|cookie|bar|blanding|mix|med |kanel|cinnamon|fr[oø]|seed|frukt|fruit|protein/.test(n)) return null;
+  // The named product must look like unflavoured oats. If an ingredient list
+  // exists, reject extra ingredients rather than treating a mixture as oats.
+  const ingredient=fold(p.ingredients ?? '').replace(/[_.]/g,' ').trim();
+  if(ingredient && !/^(?:okologisk(?:e)?\s+)?(?:glutenfri(?:e)?\s+)?(?:fullkorn\s+)?(?:havregryn|havre|rolled oats|oat flakes)(?:\s*100\s*%?)?[\s,;]*$/.test(ingredient))
+    return null;
+  const glutenFree=labeledGlutenFree(p);
+  return glutenFree
+    ? {kind:'oats-gluten-free',label:'havregryn merket glutenfri',category:'en:rolled-oats',fallback:'glutenfri havregryn'}
+    : {kind:'oats-plain',label:'havregryn',category:'en:rolled-oats',fallback:'havregryn'};
+}
+function milkProfile(p: FoodProduct): MatchProfile | null {
+  const n=fold(p.name);
+  const kind: ProductKind | null =
+    /(^|[^a-z])lettmelk(?=$|[^a-z])/.test(n) ? 'milk-low-fat'
+    : /(^|[^a-z])helmelk(?=$|[^a-z])/.test(n) ? 'milk-whole' : null;
+  if(!kind || hasFlavourLabel(p) || /smak|sjoko|kakao|cocoa|chocolate|jordbaer|vanil|coffee|kaffe|shake|drikk|yoghurt|kefir/.test(n)
+      || hasSweetExtras(p)) return null;
+  // "Milk" in plant-based category tags must not override an explicitly
+  // named dairy product unless we can corroborate the actual ingredient.
+  const t=textOf(p)+' '+fold(p.ingredients ?? '');
+  if(/(^|[^a-z])(havre|oat|soya|soy|mandel|almond|kokos|coconut|risdrikk|rice drink)(?=$|[^a-z])/.test(t))return null;
+  return kind==='milk-low-fat'
+    ? {kind,label:'lettmelk',category:'en:semi-skimmed-milks',fallback:'lettmelk'}
+    : {kind,label:'helmelk',category:'en:whole-milks',fallback:'helmelk'};
+}
+
 function colaProfile(p: FoodProduct): MatchProfile | null {
   const name = fold(p.name);
   const category = fold(p.categories.join(' '));
@@ -106,6 +168,10 @@ export function productProfile(p: FoodProduct): MatchProfile | null {
   if (cola) return cola;
   const kefir = kefirProfile(p);
   if (kefir) return kefir;
+  for(const profile of [skyrProfile, cottageCheeseProfile, oatsProfile, milkProfile]){
+    const match=profile(p);
+    if(match)return match;
+  }
 
   if (isOatBased(p) && isDrink(p)) {
     if (isBarista(p) && !hasFlavourLabel(p)) return {
@@ -146,6 +212,10 @@ export function relatedVariantComparisonNote(a: FoodProduct, b: FoodProduct): st
     return 'Begge er cola, men produkt A er vanlig cola og produkt B er sukkerfri cola. Dette er en relevant sammenligning av ulike varianter, ikke av identiske oppskrifter.';
   if (left === 'cola-sugar-free' && right === 'cola-regular')
     return 'Begge er cola, men produkt A er sukkerfri cola og produkt B er vanlig cola. Dette er en relevant sammenligning av ulike varianter, ikke av identiske oppskrifter.';
+  if ((left === 'milk-low-fat' && right === 'milk-whole') || (left === 'milk-whole' && right === 'milk-low-fat'))
+    return 'Begge er melk, men den ene er lettmelk og den andre helmelk. Sammenlign gjerne fettinnhold og energi; dette er ulike varianter.';
+  if ((left === 'oats-plain' && right === 'oats-gluten-free') || (left === 'oats-gluten-free' && right === 'oats-plain'))
+    return 'Begge er havregryn, men bare én variant er registrert som glutenfri. Dette er ikke dokumentasjon på at den andre er egnet ved cøliaki. Kontroller emballasjen.';
   return null;
 }
 /** Only a label claim, not a test of lactose content or milk allergen safety. */
@@ -181,7 +251,9 @@ function variantKey(p: FoodProduct, kind: ProductKind): string {
       : /\bmax\b/.test(name) ? 'max' : 'unspecified';
     return kind + '|' + brand + '|' + variant;
   }
-  if (kind === 'greek-plain' || kind === 'plain-yogurt' || kind === 'kefir-plain') {
+  if (kind === 'greek-plain' || kind === 'plain-yogurt' || kind === 'kefir-plain'
+    || kind === 'skyr-plain' || kind === 'cottage-cheese-plain'
+    || kind === 'milk-low-fat' || kind === 'milk-whole') {
     const metrics = [p.energy, p.protein, p.fat, p.carbs, p.sugar];
     if (metrics.filter(v => v !== null).length < 3) return identity(p);
     return kind + '|' + brand + '|' + (labeledLactoseFree(p) ? 'lactose-free' : 'unspecified')
@@ -203,7 +275,8 @@ function quality(p: FoodProduct): number {
     + (p.image ? 1 : 0) + (p.nova !== null ? 1 : 0);
 }
 function exactLabelMatch(p: FoodProduct, kind: ProductKind): number {
-  if (kind === 'greek-plain' || kind === 'plain-yogurt') return explicitlyPlain(p) ? 2 : 0;
+  if (kind === 'greek-plain' || kind === 'plain-yogurt'
+    || kind === 'skyr-plain' || kind === 'cottage-cheese-plain') return explicitlyPlain(p) ? 2 : 0;
   if (kind === 'kefir-plain') return /\b(naturell|plain|natural)\b/.test(textOf(p)) ? 2 : 0;
   if (kind === 'cola-regular') return /\b(original|classic|klassisk)\b/.test(textOf(p)) ? 1 : 0;
   if (kind === 'cola-sugar-free') return /\b(zero|sukkerfri|sugar free)\b/.test(textOf(p)) ? 1 : 0;
@@ -218,6 +291,10 @@ export function relevantAlternatives(source: FoodProduct, options: FoodProduct[]
   const sorted = options.filter(p =>
     p.code !== source.code && (!market.tag || p.countries.includes(market.tag))
     && matchesProfile(p, profile) && usableData(p)
+    // A missing "laktosefri" label must never be treated as a safe
+    // substitution for milk explicitly labelled lactose-free.
+    && (!['milk-low-fat','milk-whole'].includes(profile.kind)
+      || labeledLactoseFree(source)===labeledLactoseFree(p))
   ).sort((a, b) =>
     exactLabelMatch(b, profile.kind) - exactLabelMatch(a, profile.kind)
     || quality(b) - quality(a) || a.name.localeCompare(b.name, 'nb')
@@ -239,13 +316,13 @@ export function relevantAlternatives(source: FoodProduct, options: FoodProduct[]
 export function candidateNote(source: FoodProduct, candidate: FoodProduct): string | null {
   const a = productProfile(source), b = productProfile(candidate);
   if (!a || !b || a.kind !== b.kind) return null;
-  if (a.kind === 'greek-plain' || a.kind === 'plain-yogurt' || a.kind === 'kefir-plain') {
+  if (['greek-plain','plain-yogurt','kefir-plain','skyr-plain','cottage-cheese-plain'].includes(a.kind)) {
     if (labeledLactoseFree(source) && !labeledLactoseFree(candidate))
       return 'Denne varianten er ikke registrert som laktosefri. Kontroller emballasjen før du vurderer den som erstatning. Laktosefri betyr ikke melkefri.';
     if (!labeledLactoseFree(source) && labeledLactoseFree(candidate))
       return 'Dette forslaget er merket laktosefri. Det forteller ikke om produktet er melkefritt.';
   }
-  if ((a.kind === 'greek-plain' || a.kind === 'plain-yogurt')
+  if ((a.kind === 'greek-plain' || a.kind === 'plain-yogurt' || a.kind === 'skyr-plain')
     && source.carbs !== null && candidate.carbs !== null
     && Math.abs(source.carbs - candidate.carbs) >= 7) {
     return 'Stor forskjell i karbohydrater. Kontroller variant og næringsverdier.';

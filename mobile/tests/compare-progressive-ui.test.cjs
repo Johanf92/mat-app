@@ -66,6 +66,7 @@ function harness(){
     formatAdditiveCode:s=>s,summarizeAdditives:()=>({unrecognized:[]})
   },
   '../src/ingredientEvidence':{displayIngredientText:s=>s},
+  '../src/productDataStatus':{productDataStatus:()=>({headline:'Oppgitt i kilden: 7 av 7 næringsfelt.',notes:[]})},
   '../src/ui':{colors:{green:'#236b4b',page:'#fafbf8',ink:'#1c3428',muted:'#617368',line:'#dde6df'},
    InfoSheet:'InfoSheet',NovaBadge:'NovaBadge',SourceLink:'SourceLink'}
  };

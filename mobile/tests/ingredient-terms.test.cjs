@@ -30,3 +30,26 @@ test('aroma is not invented for unrelated texts or a fragment of another word', 
     assert.deepEqual(ingredientTerms(phrase), []);
   }
 });
+
+
+test('general ingredient function words have sourced definitions without adding E-numbers',()=>{
+ const words='aroma, emulgator, fortykningsmiddel, stabilisator, konserveringsmiddel, surhetsregulerende middel, søtstoffer';
+ const matched=ingredientTerms(words);
+ assert.deepEqual(matched.map(x=>x.id),[
+  'aroma','emulgator','fortykningsmiddel','stabilisator','konserveringsmiddel','surhetsregulerende','sotstoff',
+ ]);
+ for(const term of matched){
+   assert.match(term.source,/mattilsynet\.no/);
+   assert.ok(term.description.length>45);
+   assert.doesNotMatch(term.description,/dokumentert farlig|sikkert sunt/);
+ }
+});
+test('ingredients terms are matched as actual words, not fragments in brand or other words',()=>{
+ assert.deepEqual(ingredientTerms('koffeinaroma, stabilisatorisk, konserveringsmiddelaktig, emulgatorisk'),[]);
+ assert.deepEqual(ingredientTerms('Melk, kefirkultur, melkesyre'),[]);
+ assert.deepEqual(ingredientTerms(undefined),[]);
+});
+test('same source term is only explained once if repeated',()=>{
+ const terms=ingredientTerms('Emulgator, emulgator (E472b), emulgator.');
+ assert.deepEqual(terms.map(x=>x.id),['emulgator']);
+});

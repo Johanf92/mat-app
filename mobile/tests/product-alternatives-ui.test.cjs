@@ -46,6 +46,7 @@ function harness({ supported = true, find = async () => [], note = () => null, t
     '../../src/additives': { ADDITIVE_GENERAL_SOURCE: '', additiveSourceLabel: () => 'Kilde: Mattilsynet', formatAdditiveCode: x => x, summarizeAdditives: () => ({ title: 'Tilsetningsstoffer', rawTags: [], items: [], unrecognized: [] }) },
     '../../src/ingredientEvidence': { displayIngredientText: value => value || '', ingredientCodeNote: () => null },
     '../../src/ingredientTerms': { ingredientTerms: terms },
+    '../../src/productDataStatus': { productDataStatus: () => ({headline:'Oppgitt i kilden: 7 av 7 næringsfelt.',notes:[]}) },
     '../../src/alternatives': {
       comparableCategory: () => supported ? 'en:oat-drinks' : null,
       productProfile: () => supported ? { kind: 'oat-drink', label: 'havredrikker', category: 'en:oat-drinks' } : null,

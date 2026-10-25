@@ -10,6 +10,7 @@ import { ADDITIVE_GENERAL_SOURCE, additiveSourceLabel, formatAdditiveCode, summa
 import { ingredientTerms, type IngredientTermInfo } from '../../src/ingredientTerms';
 import { comparableCategory, findAlternatives, productProfile, candidateNote } from '../../src/alternatives';
 import { displayIngredientText, ingredientCodeNote } from '../../src/ingredientEvidence';
+import { productDataStatus } from '../../src/productDataStatus';
 
 type Topic = 'nova' | 'ingredients' | 'nutrition' | 'additives' | null;
 function Accordion({ title, children }: PropsWithChildren<{ title: string }>) {
@@ -33,20 +34,21 @@ export default function ProductScreen() {
   const [selectedAdditive,setSelectedAdditive]=useState<AdditiveInfo|null>(null);
   const [selectedTerm,setSelectedTerm]=useState<IngredientTermInfo|null>(null);
   const [imageLoadFailed,setImageLoadFailed]=useState(false);
+  const [failedAlternativeImages,setFailedAlternativeImages]=useState<string[]>([]);
   const [alternatives,setAlternatives]=useState<FoodProduct[]>([]);
   const [alternativesLoading,setAlternativesLoading]=useState(false);
   const [alternativesError,setAlternativesError]=useState('');
   const [alternativesRequested,setAlternativesRequested]=useState(false);
   async function loadAlternatives(){
     if(!product||alternativesLoading||!comparableCategory(product))return;
-    setAlternativesLoading(true);setAlternativesRequested(true);setAlternativesError('');setAlternatives([]);
+    setAlternativesLoading(true);setAlternativesRequested(true);setAlternativesError('');setAlternatives([]);setFailedAlternativeImages([]);
     try{setAlternatives(await findAlternatives(product,market));}
     catch(e){setAlternativesError(e instanceof Error ? e.message : 'Kunne ikke hente alternativer akkurat nå.');}
     finally{setAlternativesLoading(false);}
   }
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true); setProduct(null); setImageLoadFailed(false); setError(''); setFullIngredients(false); setTopic(null); setAlternatives([]); setAlternativesRequested(false); setSelectedAdditive(null);setSelectedTerm(null);
+    setLoading(true); setProduct(null); setImageLoadFailed(false); setFailedAlternativeImages([]); setError(''); setFullIngredients(false); setTopic(null); setAlternatives([]); setAlternativesRequested(false); setSelectedAdditive(null);setSelectedTerm(null);
     getProduct(id ?? '', controller.signal).then(p => {
       if (!controller.signal.aborted) { setProduct(p); if (!p) setError('Produktet finnes ikke i Open Food Facts.'); }
     }).catch(e => {
@@ -128,7 +130,12 @@ export default function ProductScreen() {
               {!!alternativesError && <Text accessibilityRole="alert" style={styles.warning}>{alternativesError}</Text>}
               {alternativesRequested && !alternativesLoading && !alternativesError && alternatives.length === 0 && <Text style={styles.caption}>Ingen relevante alternativer funnet i søkeindeksen. Nyere produkter kan mangle – prøv å velge en vare selv.</Text>}
               {!alternativesLoading && !alternativesError && alternatives.map(other => <View key={other.code} style={styles.altRow}>
-                {other.image ? <Image source={{ uri: other.image }} style={styles.altImage} resizeMode="contain" /> : <View style={styles.altImageFallback} accessibilityLabel="Produktbilde mangler"><Text style={styles.altImageEmoji}>{productProfile(other)?.kind.startsWith('cola') ? '🥤' : '🥛'}</Text></View>}
+                {other.image && !failedAlternativeImages.includes(other.code)
+                  ? <Image source={{ uri: other.image }} style={styles.altImage} resizeMode="contain"
+                      onError={() => setFailedAlternativeImages(current => current.includes(other.code) ? current : [...current, other.code])}/>
+                  : <View style={styles.altImageFallback} accessibilityLabel="Produktbilde mangler">
+                      <Text style={styles.altImageEmoji}>{productProfile(other)?.kind.startsWith('cola') ? '🥤' : productProfile(other)?.kind.startsWith('oats') ? '🥣' : '🥛'}</Text>
+                    </View>}
                 <View style={{ flex: 1, gap: 6 }}>
                   <Pressable accessibilityRole="button" accessibilityLabel={'Se ' + other.name} onPress={() => router.push({ pathname: '/product/[id]', params: { id: other.code } })}>
                     <Text style={styles.additiveName}>{other.name}</Text><Text style={styles.caption}>{other.brand}</Text>
@@ -151,6 +158,8 @@ export default function ProductScreen() {
           </View>
           <Accordion key={p.code + '-source'} title="Kilde og datakvalitet">
             <Text style={styles.body}>Dataene kommer fra Open Food Facts og kan være feil eller ufullstendige.</Text>
+            <Text testID="product-data-status" style={styles.caption}>{productDataStatus(p).headline}</Text>
+            {productDataStatus(p).notes.map(note => <Text key={note} style={styles.caption}>• {note}</Text>)}
             <Text style={styles.body}>{market.tag === null ? 'Du søker i alle land.' : p.countries.includes(market.tag) ? 'Registrert for ' + market.name + '. Dette er ikke en lagerstatus.' : 'Ikke registrert for ' + market.name + ' i dataene vi har. Varen kan likevel finnes der.'}</Text>
             <Text style={styles.caption}>Strekkode: {p.code}</Text>
             {!!additives.rawTags.length && <Text selectable style={styles.caption}>Originale tilsetningsstoffkoder: {additives.rawTags.join(', ')}</Text>}
@@ -175,7 +184,7 @@ export default function ProductScreen() {
       <Text style={styles.modalHeading}>{selectedTerm?.category}</Text>
       <Text style={styles.body}>{selectedTerm?.description}</Text>
       <Text style={styles.caption}>Forklaring av et ord i ingredienslisten, ikke en vurdering av dette produktets helsefare eller bearbeidingsgrad.</Text>
-      {!!selectedTerm && <SourceLink label="Mattilsynet – aroma og merking" url={selectedTerm.source} />}
+      {!!selectedTerm && <SourceLink label={selectedTerm.id === 'aroma' ? 'Mattilsynet – aroma og merking' : 'Mattilsynet – tilsetningsstoffenes funksjon'} url={selectedTerm.source} />}
     </InfoSheet>
     <InfoSheet visible={topic !== null} title={topic ? titles[topic] : ''} onClose={() => setTopic(null)}>
       {topic === 'nova' && <>
