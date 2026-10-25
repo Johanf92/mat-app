@@ -4,8 +4,8 @@ import { ActivityIndicator, Image, Keyboard, Pressable, ScrollView, StyleSheet, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { type FoodProduct, getProduct, searchProducts } from '../src/openFoodFacts';
 import { useMarket } from '../src/MarketContext';
-import { type CompareFocus, COMPARE_OPTIONS, METRICS, comparisonInsight, metricAmount } from '../src/comparison';
-import { productProfile } from '../src/alternatives';
+import { type CompareFocus, COMPARE_OPTIONS, METRICS, comparisonInsight, metricAmount, comparisonDataWarnings } from '../src/comparison';
+import { productProfile, candidateNote } from '../src/alternatives';
 import { summarizeAdditives } from '../src/additives';
 import { colors, NovaBadge, SourceLink } from '../src/ui';
 
@@ -57,6 +57,7 @@ export default function Compare() {
    router.setParams({right:p.code});
  }
  const sameType=left&&right&&productProfile(left)?.kind===productProfile(right)?.kind&&productProfile(left)!==null;
+ const notices=left&&right?[...comparisonDataWarnings(left,right),candidateNote(left,right)].filter((note): note is string => typeof note === 'string' && note.length>0):[];
  return <SafeAreaView style={s.safe} edges={['top','bottom','left','right']}>
   <View style={s.toolbar}><Pressable accessibilityRole="button" onPress={()=>router.canGoBack()?router.back():router.replace('/')} style={s.backButton}><Text style={s.back}>← Tilbake</Text></Pressable></View>
   <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.page}>
@@ -90,8 +91,10 @@ export default function Compare() {
         <NovaBadge group={p.nova} compact/>
        </View>)}
       </View>
+      <Text style={s.note}>Opplysningene hentes på nytt fra produktdatabasen. Forslagslisten kan vise eldre verdier.</Text>
       <Pressable accessibilityRole="button" style={s.change} onPress={()=>{setRight(null);router.setParams({right:''});}}><Text style={s.changeText}>Endre produkt B →</Text></Pressable>
       {!sameType&&<Text style={s.warning}>Disse varene er ikke bekreftet som samme produkttype. Sammenligningen kan derfor være mindre relevant.</Text>}
+      {!!sameType&&<Text style={s.note}>Begge varene ser ut til å ha samme bruksområde ut fra registrerte opplysninger. Kontroller emballasjen.</Text>}
       <Text style={s.section}>Hva vil du se nærmere på?</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.options}>
         {COMPARE_OPTIONS.map(o=><Pressable key={o.key} accessibilityRole="button" accessibilityState={{selected:focus===o.key}} style={[s.option,focus===o.key&&s.optionSelected]} onPress={()=>setFocus(o.key)}>
@@ -99,6 +102,7 @@ export default function Compare() {
         </Pressable>)}
       </ScrollView>
       <View style={s.insight}><Text style={s.insightTitle}>Dette viser dataene</Text><Text style={s.body}>{comparisonInsight(left,right,focus)}</Text></View>
+      {notices.length>0&&<View style={s.qualityCard}><Text style={s.qualityHeading}>Verdt å kontrollere</Text>{notices.map((note,i)=><Text key={i} style={s.warning}>{note}</Text>)}</View>}
       <Text style={s.section}>Næringsinnhold</Text>
       <Text style={s.note}>Per 100 g / 100 ml som oppgitt av kilden. Manglende verdier er ikke null.</Text>
       <View style={s.tableHeader}><Text style={s.metricLabel}>Egenskap</Text><Text style={s.metricValue}>A</Text><Text style={s.metricValue}>B</Text></View>
@@ -136,6 +140,7 @@ const s=StyleSheet.create({
  changeText:{color:colors.green,fontSize:14,fontWeight:'700'},options:{gap:9,paddingRight:16},option:{borderColor:colors.line,borderWidth:1,borderRadius:20,paddingHorizontal:12,paddingVertical:10,backgroundColor:'white'},
  optionSelected:{borderColor:colors.green,backgroundColor:'#E2F0E5'},optionText:{fontSize:13,fontWeight:'600',color:colors.muted},optionTextSelected:{color:colors.green},
  insight:{backgroundColor:'#E5F1E7',borderRadius:16,padding:17,gap:9},insightTitle:{fontSize:16,fontWeight:'800',color:colors.ink},
+ qualityCard:{backgroundColor:'#FFF3E5',borderRadius:14,padding:15,gap:8},qualityHeading:{fontSize:15,fontWeight:'800',color:'#80551C'},
  tableHeader:{flexDirection:'row',borderBottomColor:colors.line,borderBottomWidth:2,paddingBottom:10},
  tableRow:{flexDirection:'row',borderBottomColor:colors.line,borderBottomWidth:1,paddingVertical:12,gap:7,alignItems:'center'},
  metricLabel:{flex:1.35,fontSize:13,color:colors.ink},metricValue:{flex:1,fontSize:13,textAlign:'right',color:colors.ink,fontWeight:'700'},
