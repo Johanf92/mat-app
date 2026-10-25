@@ -95,3 +95,11 @@ test('input array is not mutated and raw values remain available', () => {
   assert.deepEqual(values, ['en:e340', 'en:e340ii']);
   assert.deepEqual(result.rawTags, values);
 });
+
+test('E211 sodium benzoate has a neutral explanatory role',()=>{
+ const item=additiveInfo('en:e211');
+ assert.equal(item.id,'E211');
+ assert.equal(item.name,'Natriumbenzoat');
+ assert.equal(item.role,'Konserveringsmiddel');
+ assert.doesNotMatch(item.description,/farlig|sunnere|forbudt/);
+});

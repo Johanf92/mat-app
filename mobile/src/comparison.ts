@@ -1,7 +1,7 @@
 import { type FoodProduct } from './openFoodFacts';
 import { amount } from './catalog';
 import { ingredientCodeEvidence, displayIngredientText } from './ingredientEvidence';
-import { normalizeAdditive } from './additives';
+import { additiveInfo, formatAdditiveCode, normalizeAdditive } from './additives';
 
 export type CompareFocus = 'processing' | 'ingredients' | 'protein' | 'sugar';
 export const COMPARE_OPTIONS: { key: CompareFocus; label: string }[] = [
@@ -20,6 +20,73 @@ export const METRICS: { key: MetricKey; label: string; unit: string }[] = [
   { key: 'fiber', label: 'Fiber', unit: 'g' },
   { key: 'salt', label: 'Salt', unit: 'g' },
 ];
+
+
+/**
+ * An E-code can be entered in Open Food Facts' separate additive field,
+ * mentioned explicitly in the ingredient text, or both. None of these
+ * observations proves absence from a product with no matching entry.
+ */
+export type AdditiveEvidenceState = 'both' | 'ingredients' | 'field' | 'not-recorded';
+export type ComparedAdditive = {
+  code: string;
+  displayCode: string;
+  name: string;
+  role: string;
+  aEvidence: AdditiveEvidenceState;
+  bEvidence: AdditiveEvidenceState;
+  differs: boolean;
+};
+function normalizedTagSet(tags: readonly string[]): Set<string> {
+  return new Set(tags.map(normalizeAdditive).filter((code): code is string => code !== null));
+}
+function statusForCode(code: string, fromIngredients: Set<string>, fromField: Set<string>): AdditiveEvidenceState {
+  const inIngredients = fromIngredients.has(code);
+  const inField = fromField.has(code);
+  return inIngredients && inField ? 'both' : inIngredients ? 'ingredients' : inField ? 'field' : 'not-recorded';
+}
+export function additiveEvidenceRows(a: FoodProduct, b: FoodProduct): ComparedAdditive[] {
+  const aText = new Set(ingredientCodeEvidence(a.ingredients, a.additives).mentioned);
+  const bText = new Set(ingredientCodeEvidence(b.ingredients, b.additives).mentioned);
+  const aField = normalizedTagSet(a.additives);
+  const bField = normalizedTagSet(b.additives);
+  const codes = new Set([...aText, ...bText, ...aField, ...bField]);
+  const results = [...codes].map(code => {
+    const info = additiveInfo(code);
+    const aEvidence = statusForCode(code, aText, aField);
+    const bEvidence = statusForCode(code, bText, bField);
+    return {
+      code, displayCode: formatAdditiveCode(code),
+      name: info?.name ?? 'Forklaring mangler',
+      role: info?.role ?? 'Funksjon ikke avklart',
+      aEvidence, bEvidence, differs: aEvidence !== bEvidence,
+    };
+  });
+  // First show codes documented on only one side, then differences in source
+  // completeness, then codes documented on both sides in the same way.
+  const priority = (row: ComparedAdditive): number => {
+    const aListed = row.aEvidence !== 'not-recorded';
+    const bListed = row.bEvidence !== 'not-recorded';
+    return aListed !== bListed ? 0 : row.differs ? 1 : 2;
+  };
+  return results.sort((left, right) =>
+    priority(left) - priority(right) || left.code.localeCompare(right.code, 'nb', { numeric: true }));
+}
+export function additiveEvidenceLabel(state: AdditiveEvidenceState): string {
+  switch (state) {
+    case 'both': return 'Nevnt i ingredienslisten og registrert i E-kodefeltet';
+    case 'ingredients': return 'Kun nevnt i ingredienslisten';
+    case 'field': return 'Kun registrert i E-kodefeltet';
+    case 'not-recorded': return 'Ingen oppføring i disse feltene';
+  }
+}
+export function additiveDifferenceSummary(row: ComparedAdditive): string {
+  const inA = row.aEvidence !== 'not-recorded';
+  const inB = row.bEvidence !== 'not-recorded';
+  if (inA !== inB) return 'Bare oppført for produkt ' + (inA ? 'A' : 'B') + ' i de tilgjengelige feltene.';
+  if (row.differs) return 'Oppført for begge, men ikke i de samme kildefeltene.';
+  return 'Oppført for begge i de tilgjengelige feltene.';
+}
 
 export function metricAmount(product: FoodProduct, metric: MetricKey, unit = 'g'): string {
   return amount(product[metric], unit);

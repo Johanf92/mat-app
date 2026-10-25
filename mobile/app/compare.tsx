@@ -4,11 +4,11 @@ import { ActivityIndicator, Image, Keyboard, Pressable, ScrollView, StyleSheet, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { type FoodProduct, getProduct, searchProducts } from '../src/openFoodFacts';
 import { useMarket } from '../src/MarketContext';
-import { type CompareFocus, COMPARE_OPTIONS, METRICS, comparisonInsight, metricAmount, comparisonDataWarnings, keyDifferences } from '../src/comparison';
+import { type CompareFocus, COMPARE_OPTIONS, METRICS, comparisonInsight, metricAmount, comparisonDataWarnings, keyDifferences, additiveEvidenceRows, additiveEvidenceLabel, additiveDifferenceSummary } from '../src/comparison';
 import { productProfile, candidateNote } from '../src/alternatives';
-import { formatAdditiveCode, summarizeAdditives } from '../src/additives';
-import { displayIngredientText, ingredientCodeNote } from '../src/ingredientEvidence';
-import { colors, NovaBadge, SourceLink } from '../src/ui';
+import { additiveInfo, formatAdditiveCode, summarizeAdditives, type AdditiveInfo } from '../src/additives';
+import { displayIngredientText } from '../src/ingredientEvidence';
+import { colors, InfoSheet, NovaBadge, SourceLink } from '../src/ui';
 
 export default function Compare() {
  const router=useRouter();
@@ -27,6 +27,7 @@ export default function Compare() {
  const [searchError,setSearchError]=useState('');
  const [focus,setFocus]=useState<CompareFocus>('processing');
  const [showIngredients,setShowIngredients]=useState(false);
+ const [selectedAdditive,setSelectedAdditive]=useState<AdditiveInfo|null>(null);
  const searchController=useRef<AbortController|null>(null);
  useEffect(()=>{
    const controller=new AbortController();
@@ -60,6 +61,9 @@ export default function Compare() {
  const sameType=left&&right&&productProfile(left)?.kind===productProfile(right)?.kind&&productProfile(left)!==null;
  const variantWarning=left&&right?candidateNote(left,right):null;
  const notices=left&&right?comparisonDataWarnings(left,right):[];
+ const evidenceRows=left&&right?additiveEvidenceRows(left,right):[];
+ const evidenceDifferences=evidenceRows.filter(row=>row.differs);
+ const sharedCodes=evidenceRows.filter(row=>!row.differs&&row.aEvidence!=='not-recorded');
  return <SafeAreaView style={s.safe} edges={['top','bottom','left','right']}>
   <View style={s.toolbar}><Pressable accessibilityRole="button" onPress={()=>router.canGoBack()?router.back():router.replace('/')} style={s.backButton}><Text style={s.back}>← Tilbake</Text></Pressable></View>
   <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.page}>
@@ -104,6 +108,16 @@ export default function Compare() {
          <Text style={s.differenceLabel}>{entry.label}</Text>
          <Text style={s.body}>{entry.description}</Text>
        </View>)}
+       {evidenceRows.length>0&&<View testID="additive-evidence-summary" style={s.additiveEvidenceSummary}>
+         <Text style={s.differenceLabel}>E-koder – hva er oppført?</Text>
+         {evidenceDifferences.length>0?evidenceDifferences.slice(0,3).map(row=><View key={row.code} style={s.evidenceHighlightRow}>
+           <Text style={s.evidenceCode}>{row.displayCode} · {row.name}</Text>
+           <Text style={s.evidenceDescription}>{row.role}. {additiveDifferenceSummary(row)}</Text>
+         </View>):<Text style={s.body}>De eksplisitte E-kodene har samme registreringsstatus hos begge varene.</Text>}
+         {evidenceDifferences.length>3&&<Text style={s.note}>Ytterligere {evidenceDifferences.length-3} forskjeller i E-koderegistreringene er vist lenger ned.</Text>}
+         {sharedCodes.length>0&&<Text style={s.note}>Oppført på samme måte for begge: {sharedCodes.slice(0,5).map(row=>row.displayCode).join(', ')}{sharedCodes.length>5?' med flere':''}.</Text>}
+         <Text style={s.note}>Ulik registrering er ikke bevis på at et stoff mangler i den andre varen. Dette er ingen sikkerhets- eller sunnhetsrangering.</Text>
+       </View>}
        <Text style={s.note}>Bare registrerte opplysninger. Kontroller varevariant og målegrunnlag på emballasjen.</Text>
       </View>
       <Text style={s.section}>Hva vil du se nærmere på?</Text>
@@ -123,17 +137,33 @@ export default function Compare() {
        <Text style={s.body} numberOfLines={showIngredients?undefined:5}>{displayIngredientText(p.ingredients)||'Ingredienslisten er ikke oppgitt.'}</Text>
       </View>)}
       <Pressable accessibilityRole="button" onPress={()=>setShowIngredients(!showIngredients)} style={s.change}><Text style={s.changeText}>{showIngredients?'Vis mindre':'Vis hele ingredienslistene'}</Text></Pressable>
-      <Text style={s.section}>Registrerte tilsetningsstoffer</Text>
-      {[left,right].map((p,index)=>{const info=summarizeAdditives(p.additives);return <View key={p.code+'additives'} style={s.additiveBox}>
-       <Text style={s.resultName}>Produkt {index===0?'A':'B'} · {p.name}</Text>
-       <Text style={s.body}>{info.rawTags.length?info.items.map(x=>formatAdditiveCode(x.id)).concat(info.unrecognized).join(', '):'Ingen E-koder registrert i eget felt. Dette betyr ikke at varen er uten tilsetningsstoffer.'}</Text>
-       {!!ingredientCodeNote(p.ingredients,p.additives)&&<Text style={s.warning}>{ingredientCodeNote(p.ingredients,p.additives)}</Text>}
-      </View>})}
+      <Text style={s.section}>E-koder og kildegrunnlag</Text>
+      <Text style={s.note}>Kun eksplisitte E-koder fra de registrerte ingredienslistene og databasens separate E-kodefelt. Trykk på en kode for forklaring.</Text>
+      {evidenceRows.length===0&&<Text style={s.note}>Ingen E-koder er dokumentert i disse feltene. Dette bekrefter ikke at varene er uten tilsetningsstoffer.</Text>}
+      {evidenceRows.map(row=><Pressable key={row.code} accessibilityRole="button" accessibilityLabel={'Les om '+row.displayCode}
+        onPress={()=>setSelectedAdditive(additiveInfo(row.code))} style={s.additiveBox}>
+        <Text style={s.resultName}>{row.displayCode} · {row.name}  ⓘ</Text>
+        <Text style={s.note}>{row.role}</Text>
+        <Text style={s.evidenceSource}>A · {additiveEvidenceLabel(row.aEvidence)}</Text>
+        <Text style={s.evidenceSource}>B · {additiveEvidenceLabel(row.bEvidence)}</Text>
+      </Pressable>)}
+      {([['A',left],['B',right]] as const).map(([letter,p])=>{
+        const raw=summarizeAdditives(p.additives).unrecognized;
+        return raw.length>0?<Text key={'raw-'+letter} style={s.note}>Produkt {letter} har også koder med ukjent format i datakilden: {raw.join(', ')}.</Text>:null;
+      })}
+      <Text style={s.note}>Manglende kode i disse feltene betyr ikke at stoffet er fraværende. E290 er karbondioksid; en ensidig E290-registrering beviser ikke ulikt innhold av kullsyre.</Text>
       <Text style={s.warning}>Kildeopplysninger kan være ufullstendige. Kontroller alltid emballasjen ved allergi. NOVA er ikke en samlet helsevurdering.</Text>
       <SourceLink label="Kilde for produkt A (åpner nettleseren)" url={'https://world.openfoodfacts.org/product/'+left.code}/>
       <SourceLink label="Kilde for produkt B (åpner nettleseren)" url={'https://world.openfoodfacts.org/product/'+right.code}/>
     </>}
   </ScrollView>
+  <InfoSheet visible={selectedAdditive!==null}
+    title={selectedAdditive?formatAdditiveCode(selectedAdditive.id)+' · '+selectedAdditive.name:''}
+    onClose={()=>setSelectedAdditive(null)}>
+    <Text style={s.body}>{selectedAdditive?.description}</Text>
+    <Text style={s.note}>Funksjonen beskriver stoffet generelt. Vi kjenner ikke mengden brukt i den aktuelle varen.</Text>
+    {!!selectedAdditive&&<SourceLink label="Kilde for E-nummer og stoffnavn" url={selectedAdditive.source}/>}
+  </InfoSheet>
  </SafeAreaView>;
 }
 const s=StyleSheet.create({
@@ -154,6 +184,11 @@ const s=StyleSheet.create({
  insight:{backgroundColor:'#E5F1E7',borderRadius:16,padding:17,gap:9},insightTitle:{fontSize:16,fontWeight:'800',color:colors.ink},
  differences:{backgroundColor:'#EDF4EE',borderRadius:16,padding:16,gap:13},
  differencesTitle:{fontSize:20,fontWeight:'800',color:colors.ink},
+ additiveEvidenceSummary:{borderTopWidth:1,borderTopColor:'#D6E1D8',paddingTop:13,gap:9},
+ evidenceHighlightRow:{gap:3},
+ evidenceCode:{fontSize:15,fontWeight:'800',color:colors.ink},
+ evidenceDescription:{fontSize:14,lineHeight:21,color:colors.ink},
+ evidenceSource:{fontSize:14,lineHeight:22,color:colors.ink},
  differenceRow:{gap:5},
  differenceDivider:{borderTopWidth:1,borderTopColor:'#D6E1D8',paddingTop:12},
  differenceLabel:{fontSize:14,fontWeight:'800',color:colors.green},

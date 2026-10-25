@@ -4,23 +4,29 @@ const fs=require('node:fs');
 const path=require('node:path');
 const Module=require('node:module');
 const ts=require('typescript');
-const sourcePath=path.resolve(__dirname,'../src/comparison.ts');
-const compiled=ts.transpileModule(fs.readFileSync(sourcePath,'utf8'),{
- fileName:sourcePath,compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020},reportDiagnostics:true
+function loadTs(name, mocks={}) {
+  const sourcePath=path.resolve(__dirname,'../src/'+name+'.ts');
+  const compiled=ts.transpileModule(fs.readFileSync(sourcePath,'utf8'),{
+    fileName:sourcePath,compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020},reportDiagnostics:true
+  });
+  assert.equal((compiled.diagnostics||[]).filter(x=>x.category===ts.DiagnosticCategory.Error).length,0);
+  const loaded=new Module(sourcePath,module);loaded.filename=sourcePath;
+  loaded.require=id=>{
+    if(Object.prototype.hasOwnProperty.call(mocks,id))return mocks[id];
+    throw Error('Unexpected dependency: '+id);
+  };
+  loaded._compile(compiled.outputText,sourcePath);
+  return loaded.exports;
+}
+const additiveModule=loadTs('additives');
+const ingredientModule=loadTs('ingredientEvidence',{'./additives':additiveModule});
+const comparisonModule=loadTs('comparison',{
+ './catalog':{amount:(n,unit='g')=>n===null?'Ikke oppgitt':n.toLocaleString('nb-NO',{maximumFractionDigits:2})+' '+unit},
+ './ingredientEvidence':ingredientModule,
+ './additives':additiveModule
 });
-assert.equal((compiled.diagnostics||[]).filter(x=>x.category===ts.DiagnosticCategory.Error).length,0);
-const loaded=new Module(sourcePath,module);loaded.filename=sourcePath;
-loaded.require=id=>{
- if(id==='./catalog')return {amount:(n,unit='g')=>n===null?'Ikke oppgitt':n.toLocaleString('nb-NO',{maximumFractionDigits:2})+' '+unit};
- if(id==='./ingredientEvidence')return {
-  displayIngredientText:text=>text?.replace(/(^|[\s(,;:])_([^_\r\n]{1,120})_(?=$|[\s),;:.!?])/gm,(_m,p,v)=>p+v)??'',
-  ingredientCodeEvidence:()=>({notInSeparateField:[]})
- };
- if(id==='./additives')return {normalizeAdditive:code=>/^[a-z]{2}:e\d+/i.test(code)?code.replace(/^[a-z]{2}:/,'').toUpperCase():/^E\d+/i.test(code)?code.toUpperCase():null};
- throw Error('Unexpected dependency: '+id);
-};
-loaded._compile(compiled.outputText,sourcePath);
-const {comparisonInsight,metricAmount,METRICS,COMPARE_OPTIONS,comparisonDataWarnings,keyDifferences}=loaded.exports;
+const {comparisonInsight,metricAmount,METRICS,COMPARE_OPTIONS,comparisonDataWarnings,keyDifferences,
+ additiveEvidenceRows,additiveEvidenceLabel,additiveDifferenceSummary}=comparisonModule;
 const a={name:'Naturell yoghurt A',nova:1,ingredients:'Melk, kultur',protein:10,sugar:4,fat:3,carbs:5,energy:90,salt:0.1,fiber:0,additives:[]};
 const b={...a,name:'Naturell yoghurt B',nova:4,protein:8,carbs:12,sugar:11,ingredients:'Melk, sukker, kultur',energy:110};
 
@@ -95,4 +101,49 @@ test('overview does not replace unknown data with zero or claim missing E-codes 
  assert.ok(keys.includes('missing-ingredients'));
  assert.ok(keys.includes('e-codes'));
  assert.ok(!keys.includes('protein'));
+});
+
+test('real cola ingredient and field evidence separates E211, E290, E150d and shared E338',()=>{
+ const cola={...a,name:'Coca-Cola Original Taste',ingredients:'Kullsyreholdig vann, sukker, fargestoff (E150d), syre (E338), naturlige aromaer',additives:['en:e150d','en:e338']};
+ const grans={...b,name:'Cola',ingredients:'Vann, sukker, kullsyre, syre (E338), farge (E150D), konserveringsmiddel (E211)',additives:['en:e211','en:e290','en:e338']};
+ const rows=additiveEvidenceRows(cola,grans);
+ assert.deepEqual(rows.map(x=>x.code),['E211','E290','E150D','E338']);
+ const e211=rows.find(x=>x.code==='E211');
+ assert.deepEqual([e211.aEvidence,e211.bEvidence],['not-recorded','both']);
+ assert.equal(e211.name,'Natriumbenzoat');
+ assert.equal(e211.role,'Konserveringsmiddel');
+ assert.match(additiveDifferenceSummary(e211),/produkt B/);
+ const e290=rows.find(x=>x.code==='E290');
+ assert.deepEqual([e290.aEvidence,e290.bEvidence],['not-recorded','field']);
+ assert.match(additiveEvidenceLabel(e290.bEvidence),/Kun registrert/);
+ const e150d=rows.find(x=>x.code==='E150D');
+ assert.deepEqual([e150d.aEvidence,e150d.bEvidence],['both','ingredients']);
+ assert.match(additiveDifferenceSummary(e150d),/begge/);
+ const shared=rows.find(x=>x.code==='E338');
+ assert.deepEqual([shared.aEvidence,shared.bEvidence],['both','both']);
+ assert.equal(shared.differs,false);
+});
+test('code comparison never infers additives from kullsyre or their chemical names',()=>{
+ const cola={...a,ingredients:'Kullsyre, fosforsyre, karamellfarge',additives:[]};
+ const other={...b,ingredients:'Kullsyre',additives:['en:e290']};
+ const rows=additiveEvidenceRows(cola,other);
+ assert.deepEqual(rows.map(x=>x.code),['E290']);
+ assert.equal(rows[0].aEvidence,'not-recorded');
+ assert.equal(rows[0].bEvidence,'field');
+ assert.doesNotMatch(additiveEvidenceLabel(rows[0].aEvidence),/uten/);
+});
+test('empty or missing E-code fields do not become an absence claim',()=>{
+ assert.deepEqual(additiveEvidenceRows({...a,ingredients:undefined,additives:[]},{...b,ingredients:undefined,additives:[]}),[]);
+ const rows=additiveEvidenceRows({...a,ingredients:undefined,additives:[]},{...b,ingredients:'E211',additives:[]});
+ assert.equal(rows[0].aEvidence,'not-recorded');
+ assert.equal(rows[0].bEvidence,'ingredients');
+ assert.match(additiveDifferenceSummary(rows[0]),/tilgjengelige feltene/);
+});
+test('code normalization ignores case but does not collapse parent and variant without evidence',()=>{
+ const one={...a,ingredients:'E340(ii) og E150d',additives:['en:e340ii','en:e150d']};
+ const other={...b,ingredients:'E340 og E150D',additives:['en:e340','E150D']};
+ const rows=additiveEvidenceRows(one,other);
+ assert.deepEqual(rows.map(x=>x.code),['E340','E340II','E150D']);
+ const caramel=rows.find(x=>x.code==='E150D');
+ assert.equal(caramel.differs,false);
 });

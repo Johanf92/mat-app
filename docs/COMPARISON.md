@@ -61,3 +61,22 @@ Et eksplisitt E-nummer som står i ingredienslisten, sammenlignes med de
 registreringshull, men kodene legges ikke automatisk til registreringslisten
 og telles ikke som registrerte tilsetningsstoffer. Kjemiske stoffnavn gir ikke
 grunnlag for å utlede en E-kode.
+
+## Neste forbedring: dokumenterte E-kodeforskjeller
+
+«Hva er forskjellen?» viser nå konkrete E-koder med en nøytral beskrivelse av
+hvilket produkt de er oppført for. En egen detaljvisning oppgir om koden er
+*nevnt i ingredienslisten*, *registrert i separat E-kodefelt* eller begge.
+Dette er et skille mellom **datakilder**, ikke en automatisk konklusjon om
+ingredienser som faktisk finnes eller mangler i maten.
+
+Eksempel: To colaer kan ha samme sukkerinnhold og NOVA-gruppe, men E211 kan
+være dokumentert bare for det ene produktet. E290 kan være registrert kun i
+ett E-kodefelt selv om begge ingredienslistene nevner kullsyre. Matkontroll
+trekker derfor ingen slutning om at det andre produktet mangler kullsyre.
+E150d kan være nevnt i ingredienslisten uten å være registrert i det separate
+E-kodefeltet. Ukjente og ufullstendige oppføringer skal synliggjøres, aldri
+tolkes som bevis på fravær eller trygghet.
+
+E211 har fått en begrenset, kildebasert forklaring på sin vanlige funksjon
+som konserveringsmiddel. E-nummerlisten er fortsatt ikke fullstendig.

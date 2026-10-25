@@ -7,6 +7,7 @@ const NAMES_SOURCE = 'https://www.gov.uk/government/publications/approved-additi
 const entries: Record<string, Omit<AdditiveInfo, 'id' | 'source'>> = {
   E150D: { name: 'Ammoniumsulfittkaramell', role: 'Fargestoff', description: 'Gir produkter en brun farge.' },
   E290: { name: 'Karbondioksid', role: 'Gass', description: 'Brukes blant annet til å gi drikker kullsyre.' },
+  E211: { name: 'Natriumbenzoat', role: 'Konserveringsmiddel', description: 'Brukes som konserveringsmiddel i enkelte matvarer og drikker.' },
   E338: { name: 'Fosforsyre', role: 'Surhetsregulerende middel', description: 'Kan brukes til å regulere surhetsgraden.' },
   E340: { name: 'Kaliumfosfater', role: 'Surhetsregulerende middel', description: 'Samlebetegnelse for kaliumfosfater. Ulike varianter har egne undernumre.' },
   E340II: { name: 'Dikaliumfosfat', role: 'Surhetsregulerende middel', description: 'En variant i E340-familien. Kan brukes til å regulere surhetsgraden.' },
