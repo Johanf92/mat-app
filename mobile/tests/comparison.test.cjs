@@ -21,7 +21,7 @@ loaded.require=id=>{
 };
 loaded._compile(compiled.outputText,sourcePath);
 const {comparisonInsight,metricAmount,METRICS,COMPARE_OPTIONS,comparisonDataWarnings,keyDifferences}=loaded.exports;
-const a={name:'Naturell yoghurt A',nova:1,ingredients:'Melk, kultur',protein:10,sugar:4,fat:3,carbs:5,energy:90,salt:0.1,fiber:0};
+const a={name:'Naturell yoghurt A',nova:1,ingredients:'Melk, kultur',protein:10,sugar:4,fat:3,carbs:5,energy:90,salt:0.1,fiber:0,additives:[]};
 const b={...a,name:'Naturell yoghurt B',nova:4,protein:8,carbs:12,sugar:11,ingredients:'Melk, sukker, kultur',energy:110};
 
 test('NOVA differences describe processing without naming a healthier winner',()=>{
