@@ -15,6 +15,7 @@ import { productDataStatus } from '../../src/productDataStatus';
 import { formatAllergenTags } from '../../src/allergens';
 import { nutriScoreDescription, nutriScoreLabel, NUTRI_SCORE_SOURCE, NORWEGIAN_LABEL_SOURCE } from '../../src/nutriScore';
 import { productSnapshot } from '../../src/productSnapshot';
+import { verifiedProcessingDiscovery } from '../../src/discovery';
 
 type Topic = 'nova' | 'nutriscore' | 'ingredients' | 'nutrition' | 'additives' | null;
 function Accordion({ title, children }: PropsWithChildren<{ title: string }>) {
@@ -40,6 +41,7 @@ export default function ProductScreen() {
   const [imageLoadFailed,setImageLoadFailed]=useState(false);
   const [failedAlternativeImages,setFailedAlternativeImages]=useState<string[]>([]);
   const [alternatives,setAlternatives]=useState<FoodProduct[]>([]);
+  const [discovery,setDiscovery]=useState<FoodProduct|null>(null);
   const [alternativesLoading,setAlternativesLoading]=useState(false);
   const [alternativesError,setAlternativesError]=useState('');
   const [alternativesRequested,setAlternativesRequested]=useState(false);
@@ -52,6 +54,7 @@ export default function ProductScreen() {
   }
   useEffect(() => {
     const controller = new AbortController();
+    setDiscovery(null);
     setLoading(true); setProduct(null); setImageLoadFailed(false); setFailedAlternativeImages([]); setError(''); setFullIngredients(false); setTopic(null); setAlternatives([]); setAlternativesRequested(false); setSelectedAdditive(null);setSelectedTerm(null);
     getProduct(id ?? '', controller.signal).then(p => {
       if (!controller.signal.aborted) { setProduct(p); if (!p) setError('Produktet finnes ikke i Open Food Facts.'); }
@@ -60,6 +63,28 @@ export default function ProductScreen() {
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [id, retry]);
+  useEffect(() => {
+    if (!product || product.nova === null || product.nova <= 1 || !comparableCategory(product)) return;
+    const controller = new AbortController();
+    // Keep this optional: no loading spinner, no warning, and no extra requests
+    // when the source itself has no documented processing classification.
+    (async () => {
+      try {
+        const hits = await findAlternatives(product, market, controller.signal);
+        // Verify only the first few candidates directly, never trust stale NOVA
+        // in the search index, and stop at one useful discovery.
+        for (const hit of hits.slice(0, 3)) {
+          if (controller.signal.aborted) return;
+          const fresh = await getProduct(hit.code, controller.signal);
+          if (fresh && verifiedProcessingDiscovery(product, fresh)) {
+            if (!controller.signal.aborted) setDiscovery(fresh);
+            return;
+          }
+        }
+      } catch { /* Discovery is optional; ordinary product analysis still works. */ }
+    })();
+    return () => controller.abort();
+  }, [product?.code, market.code]);
   const p = product;
   const nova = novaInfo(p?.nova ?? null);
   const alternativesSupported = p !== null && comparableCategory(p) !== null;
@@ -105,6 +130,15 @@ export default function ProductScreen() {
           {!!dataStatus?.summaryNotice && <Text testID="product-data-caveat" style={styles.caption}>{dataStatus.summaryNotice}</Text>}
           <Text style={styles.caption}>Dette er registrerte kildeopplysninger, ikke en samlet helsevurdering.</Text>
         </View>
+        {discovery && <View testID="worth-comparing" style={styles.discovery}>
+          <Text style={styles.discoveryHeading}>Verdt å sammenligne</Text>
+          <Text style={styles.body}>{discovery.name} er registrert med NOVA {discovery.nova}, mot NOVA {p.nova} for denne varen.</Text>
+          <Text style={styles.caption}>Et relevant produkt med lavere registrert bearbeidingsgrad. Ikke nødvendigvis sunnere. Opplysningene kan være feil.</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={'Sammenlign med '+discovery.name}
+            onPress={() => router.push({ pathname: '/compare', params: { left: p.code, right: discovery.code } })} style={styles.compareButton}>
+            <Text style={styles.compareText}>Se forskjellene →</Text>
+          </Pressable>
+        </View>}
         <View style={styles.accordions}>
           <Accordion key={p.code + '-ingredients'} title="Ingredienser">
             <Text style={styles.caption}>{['no', 'nb'].includes(p.ingredientLanguage) ? 'Tekst registrert i norsk språkfelt.' : 'Tekst fra datakilden. Kan inneholde flere språk; ikke automatisk oversatt.'}</Text>
@@ -255,6 +289,8 @@ const styles = StyleSheet.create({
   nutriHeading: {fontSize:14,fontWeight:'700',color:colors.ink},
   nutriValue: {fontSize:16,fontWeight:'800',color:colors.green},
   snapshot: {gap:6,padding:14,backgroundColor:'#EDF3ED',borderRadius:14},
+  discovery: { gap: 7, borderWidth: 1, borderColor: colors.line, padding: 14, borderRadius: 14, backgroundColor: 'white' },
+  discoveryHeading: { fontSize: 15, fontWeight: '700', color: colors.ink },
   snapshotHeading: {fontSize:16,fontWeight:'800',color:colors.ink},
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }, section: { fontSize: 18, fontWeight: '800', color: colors.ink },
   infoButton: { minHeight: 44, justifyContent: 'center', paddingVertical: 8 }, info: { fontSize: 13, fontWeight: '700', color: colors.green },
