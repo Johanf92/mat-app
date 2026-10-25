@@ -21,7 +21,7 @@ const product = {
   additives: [], allergens: [], countries: ['en:norway'], categories: ['en:oat-drinks'], modifiedAt: null,
 };
 const market = { code: 'no', name: 'Norge', tag: 'en:norway' };
-function harness({ supported = true, find = async () => [], note = () => null } = {}) {
+function harness({ supported = true, find = async () => [], note = () => null, terms = () => [] } = {}) {
   const state = [];
   let cursor = 0;
   const calls = [], routes = [];
@@ -43,9 +43,9 @@ function harness({ supported = true, find = async () => [], note = () => null } 
     '../../src/catalog': { amount: n => String(n), NOVA: {}, novaInfo: () => ({ label: 'Example', background: '#fff', foreground: '#000', accent: '#000' }) },
     '../../src/MarketContext': { useMarket: () => ({ market }) },
     '../../src/ui': { colors: {}, InfoSheet: 'InfoSheet', SourceLink: 'SourceLink', NovaBadge: 'NovaBadge' },
-    '../../src/additives': { ADDITIVE_GENERAL_SOURCE: '', formatAdditiveCode: x => x, summarizeAdditives: () => ({ title: 'Tilsetningsstoffer', rawTags: [], items: [], unrecognized: [] }) },
+    '../../src/additives': { ADDITIVE_GENERAL_SOURCE: '', additiveSourceLabel: () => 'Kilde: Mattilsynet', formatAdditiveCode: x => x, summarizeAdditives: () => ({ title: 'Tilsetningsstoffer', rawTags: [], items: [], unrecognized: [] }) },
     '../../src/ingredientEvidence': { displayIngredientText: value => value || '', ingredientCodeNote: () => null },
-    '../../src/ingredientTerms': { ingredientTerms: () => [] },
+    '../../src/ingredientTerms': { ingredientTerms: terms },
     '../../src/alternatives': {
       comparableCategory: () => supported ? 'en:oat-drinks' : null,
       productProfile: () => supported ? { kind: 'oat-drink', label: 'havredrikker', category: 'en:oat-drinks' } : null,
@@ -194,4 +194,20 @@ test('ingredient evidence stays distinct from source-registered additives', () =
  const ingredientAccordion=all.find(x=>x.type?.name==='Accordion'&&x.props?.title==='Ingredienser');
  assert.ok(ingredientAccordion);
  assert.ok(text(ingredientAccordion).includes('Oats, water'));
+});
+
+test('ingredient term opens a sourced explanation without changing additive counts', () => {
+ const term={id:'aroma',name:'Aroma',category:'Smak og lukt',description:'Samlebetegnelse, ikke ett E-nummer.',source:'https://www.mattilsynet.no/mat-og-drikke/matproduksjon/tilsatte-stoffer-i-mat/aroma'};
+ const h=harness({terms:()=>[term]});
+ const button=byId(h.render(),'ingredient-term-aroma');
+ assert.ok(button);
+ button.props.onPress();
+ const tree=h.render();
+ const sheet=nodes(tree).find(n=>n.type==='InfoSheet'&&n.props.title==='Aroma');
+ assert.ok(sheet);
+ assert.equal(sheet.props.visible,true);
+ assert.match(text(sheet),/Samlebetegnelse/);
+ assert.ok(nodes(sheet).some(n=>n.type==='SourceLink'&&n.props.url===term.source));
+ assert.match(text(tree),/Tilsetningsstoffer/);
+ assert.equal(h.routes.length,0);
 });
