@@ -18,18 +18,12 @@ const entries: Record<string, Omit<AdditiveInfo, 'id' | 'source'> & { source?: s
   E951: { name: 'Aspartam', role: 'Søtstoff', description: 'Et sterkt søtende søtstoff. Aspartam inneholder fenylalanin, som personer med fenylketonuri (PKU / Føllings sykdom) må ta hensyn til. Kontroller alltid den faktiske merkingen på emballasjen.', source: SWEETENERS_SOURCE },
   E202: { name: 'Kaliumsorbat', role: 'Konserveringsmiddel', description: 'Brukes for å begrense vekst av blant annet gjær og muggsopp i noen matvarer. Koden alene sier ikke noe om mengden i dette produktet.', source: NORWEGIAN_ADDITIVES_SOURCE },
   E330: { name: 'Sitronsyre', role: 'Surhetsregulerende middel', description: 'Brukes for å regulere surheten i mat og drikke. Sitronsyre finnes også naturlig i blant annet sitrusfrukter, men oppføring av E330 forteller ikke hvordan stoffet i denne varen er fremstilt.', source: NORWEGIAN_ADDITIVES_SOURCE },
-  E407: { name: 'Karragenan', role: 'Fortyknings- og stabiliseringsmiddel', description: 'Utvinnes fra rødalger og brukes for å gi eller stabilisere konsistensen i enkelte matvarer. E-nummeret forteller ikke hvilken mengde som er brukt, eller noe sikkert om individuell helserisiko.', source: NORWEGIAN_ADDITIVES_SOURCE },
+  E407: { name: 'Karragenan', role: 'Fortyknings- og stabiliseringsmiddel', description: 'Utvinnes fra rødalger og brukes for å gi eller stabilisere konsistensen i enkelte matvarer. E-nummeret forteller ikke hvilken mengde som er brukt i dette produktet.', background: 'Karragenan brukes i enkelte meieriprodukter, desserter og plantebaserte produkter for å gi ønsket konsistens.', healthContext: 'I en vurdering fra 2018 påpekte EFSA kunnskapshull og usikkerheter knyttet til karragenan, og behov for mer dokumentasjon. Dette alene viser ikke at karragenan i vanlige matvarer er helseskadelig. Vurderingen er datert 2018.', healthSource: 'https://doi.org/10.2903/j.efsa.2018.5238', source: NORWEGIAN_ADDITIVES_SOURCE },
   E410: { name: 'Johannesbrødkjernemel', role: 'Fortykningsmiddel', description: 'Uttrukket fra frøene til johannesbrødtreet. Brukes til å tykne eller stabilisere konsistensen i matvarer.', source: NORWEGIAN_ADDITIVES_SOURCE },
   E440: { name: 'Pektiner', role: 'Gelerings- og fortykningsmiddel', description: 'Stoffer fra plantecellevegger, blant annet i frukt, som kan bidra til å tykne eller danne gelé i matvarer.', source: NORWEGIAN_ADDITIVES_SOURCE },
   E472B: { name: 'Melkesyreestere av mono- og diglyserider av fettsyrer', role: 'Emulgator', description: 'Brukes for å få ingredienser som fett og vann til å blande seg eller holde seg jevnt fordelt. Navnet viser til typen ester, ikke at produktet nødvendigvis inneholder melk.', source: NORWEGIAN_ADDITIVES_SOURCE },
-  E202: { name: 'Kaliumsorbat', role: 'Konserveringsmiddel', description: 'Brukes til å begrense vekst av blant annet gjær og muggsopp og kan bidra til lengre holdbarhet.', source: NORWEGIAN_ADDITIVES_SOURCE },
-  E330: { name: 'Sitronsyre', role: 'Surhetsregulerende middel', description: 'Brukes til å regulere surhet og gi syrlig smak. Sitronsyre finnes også naturlig i frukt, men kan fremstilles industrielt.', source: NORWEGIAN_ADDITIVES_SOURCE },
-  E407: { name: 'Karragenan', role: 'Fortykningsmiddel og stabilisator', description: 'Fremstilles fra rødalger og brukes for å gi matvarer ønsket konsistens og stabilitet.', background: 'Brukes blant annet i enkelte meieriprodukter, desserter og plantebaserte matvarer. Det konkrete bruksområdet og mengden i varen kan ikke fastslås fra E-nummeret alene.', healthContext: 'EFSA vurderte karragenan i 2018 og påpekte datamangler og usikkerheter som måtte undersøkes videre. Dette er ikke i seg selv dokumentasjon på at karragenan i vanlige matvarer gir helseskade. Vurderingen fra 2018 beskriver ikke nødvendigvis all nyere forskning.', healthSource: 'https://doi.org/10.2903/j.efsa.2018.5238', source: NORWEGIAN_ADDITIVES_SOURCE },
-  E410: { name: 'Johannesbrødkjernemel', role: 'Fortykningsmiddel og stabilisator', description: 'Utvikles fra frøene i johannesbrødtreet og brukes for å gi matvarer tykkere eller jevnere konsistens.', source: NORWEGIAN_ADDITIVES_SOURCE },
-  E440: { name: 'Pektiner', role: 'Geleringsmiddel og stabilisator', description: 'Pektin er et plantebasert stoff som blant annet finnes i frukt. Brukes for å gi ønsket konsistens eller danne gelé.', source: NORWEGIAN_ADDITIVES_SOURCE },
-  E472B: { name: 'Melkesyreestere av mono- og diglyserider av fettsyrer', role: 'Emulgator', description: 'Kan bidra til at fett og vann holdes blandet og gi ønsket konsistens. Navnet inneholder melkesyre, men gir ikke i seg selv informasjon om eventuelle melkeallergener i varen.', source: NORWEGIAN_ADDITIVES_SOURCE },
   E412: { name: 'Guarkjernemel', role: 'Fortykningsmiddel og stabilisator', description: 'Et plantebasert fortykningsmiddel som kan bidra til jevn konsistens i mat.', source: NORWEGIAN_ADDITIVES_SOURCE },
-  E415: { name: 'Xantangummi', role: 'Fortykningsmiddel og stabilisator', description: 'Brukes i små mengder for å påvirke konsistens og stabilitet i blant annet sauser og desserter.', source: NORWEGIAN_ADDITIVES_SOURCE },
+  E415: { name: 'Xantangummi', role: 'Fortykningsmiddel og stabilisator', description: 'Brukes for å påvirke konsistens og stabilitet i blant annet sauser og desserter.', source: NORWEGIAN_ADDITIVES_SOURCE },
   E340: { name: 'Kaliumfosfater', role: 'Surhetsregulerende middel', description: 'Samlebetegnelse for kaliumfosfater. Ulike varianter har egne undernumre.' },
   E340II: { name: 'Dikaliumfosfat', role: 'Surhetsregulerende middel', description: 'En variant i E340-familien. Kan brukes til å regulere surhetsgraden.' },
 };
@@ -70,13 +64,6 @@ export function formatAdditiveCode(value: string): string {
   const parts = parseCode(value);
   if (!parts) return value;
   return 'E' + parts.number + parts.letter.toLowerCase() + (parts.variant ? '(' + parts.variant.toLowerCase() + ')' : '');
-}
-/** Source label must match the actual link; Mattilsynet is not the UK FSA. */
-export function additiveSourceLabel(url: string): string {
-  if (url.includes('mattilsynet.no')) return 'Mattilsynet – om tilsetningsstoffer';
-  if (url.includes('efsa.europa.eu') || url.includes('doi.org/10.2903/j.efsa')) return 'EFSA – faglig vurdering';
-  if (url.includes('gov.uk')) return 'Food Standards Agency – godkjente E-numre';
-  return 'Kilde til informasjon';
 }
 export function additiveInfo(raw: string): AdditiveInfo | null {
   const id = normalizeAdditive(raw);
