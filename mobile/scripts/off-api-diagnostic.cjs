@@ -1,9 +1,10 @@
 // Manual/one-off network check. Never used by the app.
 const ua='Matkontroll/0.1 (https://github.com/Johanf92/mat-app)';
 const probes=[
-  ['search-plain','https://search.openfoodfacts.org/search?q=cola&page_size=2&fields=code,product_name,brands,countries_tags,nutriments,categories_tags,nova_group'],
-  ['search-market','https://search.openfoodfacts.org/search?q=cola%20countries_tags%3A%22en%3Anorway%22&page_size=2&fields=code,product_name,brands,countries_tags,nutriments,categories_tags,nova_group'],
-  ['structured','https://world.openfoodfacts.org/api/v2/search?categories_tags=en%3Agreek-yogurts&countries_tags_en=norway&page_size=2&fields=code,product_name,brands,countries_tags,nutriments,categories_tags,nova_group'],
+  ['search-market','https://search.openfoodfacts.org/search?q=cola%20countries_tags%3A%22en%3Anorway%22&page_size=3&fields=code,product_name,brands,countries_tags,nutriments,categories_tags,nova_group'],
+  ['category-oats','https://search.openfoodfacts.org/search?q=categories_tags%3A%22en%3Aoat-drinks%22%20countries_tags%3A%22en%3Anorway%22&page_size=3&fields=code,product_name,brands,countries_tags,nutriments,categories_tags,nova_group'],
+  ['category-greek','https://search.openfoodfacts.org/search?q=categories_tags%3A%22en%3Agreek-yogurts%22%20countries_tags%3A%22en%3Anorway%22&page_size=3&fields=code,product_name,brands,countries_tags,nutriments,categories_tags,nova_group'],
+  ['text-greek','https://search.openfoodfacts.org/search?q=gresk%20yoghurt%20countries_tags%3A%22en%3Anorway%22&page_size=3&fields=code,product_name,brands,countries_tags,nutriments,categories_tags,nova_group'],
 ];
 (async()=>{
   for (const [label,url] of probes){
@@ -24,6 +25,9 @@ const probes=[
         count:parsed?.count??null,
         firstKeys:hit&&typeof hit==='object'?Object.keys(hit).slice(0,25):[],
         firstCode:hit?.code??hit?._source?.code??null,
+        firstNameType:typeof hit?.product_name,firstBrandType:typeof hit?.brands,
+        firstCountries:Array.isArray(hit?.countries_tags)?hit.countries_tags.slice(0,4):null,
+        firstNames:Array.isArray(parsed?.hits)?parsed.hits.slice(0,3).map(p=>({code:p.code,name:typeof p.product_name==='string'?p.product_name.slice(0,90):String(p.product_name??'').slice(0,90)})):[],
         responsePreview:!parsed?raw.slice(0,110).replace(/\s+/g,' '):undefined
       }));
     }catch(e){console.log(JSON.stringify({label,error:String(e)}));}
