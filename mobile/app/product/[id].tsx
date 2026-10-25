@@ -66,7 +66,7 @@ export default function ProductScreen() {
       {!!error && <View style={styles.details}><Text accessibilityRole="alert" style={styles.body}>{error}</Text><Pressable onPress={() => setRetry(x => x + 1)} style={styles.infoButton}><Text style={styles.info}>Prøv igjen</Text></Pressable></View>}
       {p && <>
         <View style={styles.productHeader}>
-          {p.image ? <Image source={{ uri: p.image }} style={styles.photo} resizeMode="contain" /> : <View style={styles.photo} />}
+          {p.image ? <Image source={{ uri: p.image }} style={styles.photo} resizeMode="contain" /> : <View style={[styles.photo, styles.photoPlaceholder]}><Text style={styles.photoPlaceholderText}>Bilde ikke registrert</Text></View>}
           <View style={styles.meta}><Text style={styles.brand}>{p.brand}</Text><Text accessibilityRole="header" style={styles.title}>{p.name}</Text>{!!p.quantity && <Text style={styles.caption}>{p.quantity}</Text>}</View>
         </View>
         <Pressable accessibilityRole="button" accessibilityLabel={'Bearbeidingsgrad. ' + (p.nova ? 'NOVA ' + p.nova : 'Ikke oppgitt') + '. Trykk for forklaring.'}
@@ -197,7 +197,10 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.page }, toolbar: { paddingHorizontal: 18, borderBottomWidth: 1, borderBottomColor: colors.line },
   backButton: { alignSelf: 'flex-start', minHeight: 48, justifyContent: 'center', paddingHorizontal: 4 }, back: { fontSize: 16, fontWeight: '700', color: colors.green },
   page: { padding: 22, paddingBottom: 30, gap: 16 }, productHeader: { flexDirection: 'row', gap: 15, alignItems: 'center' },
-  photo: { width: 80, height: 100, borderRadius: 14, backgroundColor: '#E9EFE9' }, meta: { flex: 1, gap: 5 },
+  photo: { width: 80, height: 100, borderRadius: 14, backgroundColor: '#E9EFE9' },
+  photoPlaceholder: { justifyContent: 'center', alignItems: 'center', padding: 6 },
+  photoPlaceholderText: { color: colors.muted, fontSize: 10, textAlign: 'center', lineHeight: 14 },
+  meta: { flex: 1, gap: 5 },
   title: { fontSize: 24, fontWeight: '800', color: colors.ink }, brand: { fontSize: 14, color: colors.muted },
   body: { fontSize: 15, lineHeight: 23, color: colors.ink }, caption: { fontSize: 12, lineHeight: 19, color: colors.muted },
   novaCard: { borderWidth: 1, padding: 18, borderRadius: 18, gap: 9 }, spread: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
