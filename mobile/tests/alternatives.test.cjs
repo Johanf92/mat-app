@@ -15,8 +15,8 @@ let categoryResults=[],textResults=[];
 const loaded=new Module(sourcePath,module);loaded.filename=sourcePath;
 loaded.require=id=>{
  if(id==='./openFoodFacts')return {
-  searchByCategory:async (...args)=>{calls.push({type:'category',args});return categoryResults;},
-  searchProducts:async (...args)=>{calls.push({type:'text',args});return textResults;}
+  searchByCategory:async (...args)=>{calls.push({type:'category',args});if(categoryResults instanceof Error)throw categoryResults;return categoryResults;},
+  searchProducts:async (...args)=>{calls.push({type:'text',args});if(textResults instanceof Error)throw textResults;return textResults;}
  };
  throw Error('Unexpected dependency: '+id);
 };
@@ -79,4 +79,25 @@ test('unsupported products do not trigger API searches',async()=>{
  assert.equal(productProfile(next('99999999',{name:'Pasta Bolognese',brand:'Generic',ingredients:'Pasta, tomato',categories:[]})),null);
  const result=await findAlternatives(next('99999999',{name:'Pasta Bolognese',brand:'Generic',ingredients:'Pasta, tomato',categories:[]}),market);
  assert.deepEqual(result,[]);assert.equal(calls.length,0);
+});
+
+test('category service failure falls back to a narrowly matched text search',async()=>{
+ calls.length=0;categoryResults=new Error('503');textResults=[next('22222222',{name:'Havre barista drikk',brand:'Different'})];
+ try{
+  const results=await findAlternatives(base,market);
+  assert.deepEqual(results.map(x=>x.code),['22222222']);
+  assert.deepEqual(calls.map(x=>x.type),['category','text']);
+ }finally{categoryResults=[];textResults=[];}
+});
+test('partial category results survive a failing fallback search',async()=>{
+ calls.length=0;categoryResults=[next('22222222',{name:'Havre barista drikk',brand:'Different'})];textResults=new Error('503');
+ try{
+  const results=await findAlternatives(base,market);
+  assert.equal(results.length,1);
+ }finally{categoryResults=[];textResults=[];}
+});
+test('both search requests failing reports an error rather than pretending no matches exist',async()=>{
+ calls.length=0;categoryResults=new Error('503');textResults=new Error('502');
+ try{await assert.rejects(findAlternatives(base,market),/502/);}
+ finally{categoryResults=[];textResults=[];}
 });
