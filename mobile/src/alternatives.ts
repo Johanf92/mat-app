@@ -56,7 +56,7 @@ function plainYogurt(p: FoodProduct): boolean {
     && (explicitlyPlain(p) || plainDairyIngredients(p));
 }
 function isDrink(p: FoodProduct): boolean {
-  return /\b(drink|drikke|melk|milk|beverage|barista|ikaffe|kaffe|coffee)/.test(textOf(p));
+  return /(drink|drikke|drikk|melk|milk|beverage|barista|ikaffe|kaffe|coffee)/.test(textOf(p));
 }
 function colaProfile(p: FoodProduct): MatchProfile | null {
   const name = fold(p.name);
