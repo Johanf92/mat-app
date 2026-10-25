@@ -15,7 +15,7 @@ const loaded = new Module(sourcePath, module);
 loaded.filename = sourcePath;
 loaded.paths = module.paths;
 loaded._compile(compiled.outputText, sourcePath);
-const { normalizeAdditive, formatAdditiveCode, additiveInfo, groupAdditives, summarizeAdditives } = loaded.exports;
+const { normalizeAdditive, formatAdditiveCode, additiveInfo, groupAdditives, summarizeAdditives, additiveSourceLabel } = loaded.exports;
 
 test('letter suffix E150d is not silently dropped', () => {
   assert.equal(normalizeAdditive('en:e150d'), 'E150D');
@@ -121,4 +121,28 @@ test('Zero comparison codes have neutral Norwegian source-backed explanations', 
     assert.match(item.source,/mattilsynet\.no/);
     assert.doesNotMatch(item.description,/sunnere|farlig|ufarlig/);
   }
+});
+
+test('common rice dessert additives have sourced, neutral Norwegian explanations', () => {
+  const expected={
+    E472B:['Melkesyreestere','Emulgator'],
+    E440:['Pektiner','Gelerings- og fortykningsmiddel'],
+    E407:['Karragenan','Fortyknings- og stabiliseringsmiddel'],
+    E410:['Johannesbrødkjernemel','Fortykningsmiddel'],
+    E330:['Sitronsyre','Surhetsregulerende middel'],
+    E202:['Kaliumsorbat','Konserveringsmiddel']
+  };
+  for(const [code,[name,role]] of Object.entries(expected)){
+    const term=additiveInfo(code);
+    assert.ok(term,code);
+    assert.match(term.name,new RegExp(name));
+    assert.equal(term.role,role);
+    assert.match(term.source,/mattilsynet\.no/);
+    assert.doesNotMatch(term.description,/farlig|sunnere|kreftfremkallende/);
+  }
+  assert.match(additiveInfo('E407').healthContext,/2018/);
+  assert.match(additiveInfo('E407').healthSource,/doi\.org/);
+  assert.match(additiveSourceLabel(additiveInfo('E407').source),/Mattilsynet/);
+  assert.match(additiveSourceLabel(additiveInfo('E407').healthSource),/EFSA/);
+  assert.equal(summarizeAdditives(['en:e472b','en:e407','en:e440']).items.length,3);
 });
