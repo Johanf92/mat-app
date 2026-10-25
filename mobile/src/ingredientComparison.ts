@@ -8,11 +8,11 @@ type ListedTerm={key:string;label:string;re:RegExp};
  * proof of listed sugar. Terms are matched only against ingredient source text.
  */
 const TERMS:readonly ListedTerm[]=[
-  {key:'sugar',label:'sukker',re:/(^|[^\p{L}])(?:sukker|sugar|sukrose|sucrose)(?=$|[^\p{L}-])/iu},
-  {key:'sweetener',label:'søtstoff eller søtstoffnavn',re:/(^|[^\p{L}])(?:søtstoff(?:er)?|sweetener(?:s)?|aspartam(?:e)?|acesulfam[\s-]*k|sukralose|sucralose|stevia)(?=$|[^\p{L}])/iu},
-  {key:'salt',label:'salt',re:/(^|[^\p{L}])(?:salt|sea[\s-]*salt|havsalt)(?=$|[^\p{L}])/iu},
-  {key:'oat',label:'havre',re:/(^|[^\p{L}])(?:havre(?:gryn|base)?|oat(?:s|[\s-]*base)?|kaura)(?=$|[^\p{L}])/iu},
-  {key:'milk',label:'melk',re:/(^|[^\p{L}])(?:melk|lettmelk|helmelk|skummet[\s-]*melk|milk|skimmed[\s-]*milk)(?=$|[^\p{L}])/iu},
+  {key:'sugar',label:'sukker',re:/(^|[^a-zA-ZÀ-ÖØ-öø-ÿ])(?:sukker|sugar|sukrose|sucrose)(?=$|[^a-zA-ZÀ-ÖØ-öø-ÿ-])/iu},
+  {key:'sweetener',label:'søtstoff eller søtstoffnavn',re:/(^|[^a-zA-ZÀ-ÖØ-öø-ÿ])(?:søtstoff(?:er)?|sweetener(?:s)?|aspartam(?:e)?|acesulfam[\s-]*k|sukralose|sucralose|stevia)(?=$|[^a-zA-ZÀ-ÖØ-öø-ÿ])/iu},
+  {key:'salt',label:'salt',re:/(^|[^a-zA-ZÀ-ÖØ-öø-ÿ])(?:salt|sea[\s-]*salt|havsalt)(?=$|[^a-zA-ZÀ-ÖØ-öø-ÿ])/iu},
+  {key:'oat',label:'havre',re:/(^|[^a-zA-ZÀ-ÖØ-öø-ÿ])(?:havre(?:gryn|base)?|oat(?:s|[\s-]*base)?|kaura)(?=$|[^a-zA-ZÀ-ÖØ-öø-ÿ])/iu},
+  {key:'milk',label:'melk',re:/(^|[^a-zA-ZÀ-ÖØ-öø-ÿ])(?:melk|lettmelk|helmelk|skummet[\s-]*melk|milk|skimmed[\s-]*milk)(?=$|[^a-zA-ZÀ-ÖØ-öø-ÿ])/iu},
 ];
 
 export type IngredientMentionDifference={key:string;label:string;side:'A'|'B'};

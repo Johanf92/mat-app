@@ -32,3 +32,9 @@
 - [ ] Favoritter, historikk og mulighet til å rette feil i datakilden
 - [ ] Django/DRF + PostgreSQL for caching, moderering og produktanalyse
 - [ ] Mer robust feilhåndtering og brukertesting på iOS og Android
+
+
+- [x] Produktside og sammenligning deler nå E-kodebevis fra ingredienser og separat felt
+- [x] Konkrete, forsiktige ingrediensordforskjeller som sukker/søtstoff uten fraværspåstander
+- [x] Sikrere coladuplikater: ulike registrerte næringsprofiler fra samme merke skjules ikke automatisk
+- [x] Feilkategoriserte mandel-/soyadrikker blir ikke barista-havrealternativer selv om søkeindeksen har feil kategori

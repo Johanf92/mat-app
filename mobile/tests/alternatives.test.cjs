@@ -399,3 +399,36 @@ test('Finnish generic oat-based porridge is never automatically a drink',()=>{
  const porridge=next('1111111100813',{name:'Kaurapuuro',brand:'Coop',ingredients:'Kaura, vesi',categories:[]});
  assert.equal(productProfile(porridge),null);
 });
+
+
+test('stale oat categories cannot turn explicit almond or soy barista drinks into oat suggestions',()=>{
+ const almond=next('3030303030301',{name:'Almond Barista',brand:'Other',ingredients:'Mandel, vann',categories:['en:oat-drinks','en:barista-products']});
+ const mixed=next('3030303030302',{name:'Oat Almond Barista',brand:'Other',ingredients:'Havre, mandel',categories:['en:oat-drinks']});
+ const soy=next('3030303030303',{name:'Soy Barista',brand:'Other',ingredients:'Soya, vann',categories:['en:oat-drinks']});
+ const genuine=next('3030303030304',{name:'Oat Barista',brand:'Other',ingredients:'Havre, vann',categories:['en:oat-drinks']});
+ assert.equal(productProfile(almond),null);
+ assert.equal(productProfile(mixed),null);
+ assert.equal(productProfile(soy),null);
+ assert.deepEqual(relevantAlternatives(base,[almond,mixed,soy,genuine],market).map(x=>x.code),[genuine.code]);
+});
+
+test('different regular-cola nutrient signatures remain visible even within one brand',()=>{
+ const original=next('3030303030310',{name:'Coca-Cola Original Taste',brand:'Coca-Cola',sugar:10.6,carbs:10.6,energy:42,categories:['en:colas']});
+ const pack=next('3030303030311',{name:'Coca Cola Original 330 ml',brand:'Coca-Cola',sugar:10.6,carbs:10.6,energy:42,categories:['en:colas']});
+ const changedRecipe=next('3030303030312',{name:'Coca Cola Original 500 ml',brand:'Coca-Cola',sugar:9.5,carbs:9.5,energy:38,categories:['en:colas']});
+ const other=next('3030303030313',{name:'Cola',brand:'Grans',sugar:10.6,carbs:10.6,energy:42,categories:['en:colas']});
+ const suggestions=relevantAlternatives(original,[pack,changedRecipe,other],market);
+ assert.ok(!suggestions.some(p=>p.code===pack.code),'identical packaging alias should collapse');
+ assert.ok(suggestions.some(p=>p.code===changedRecipe.code),'different nutrient signature must not be hidden');
+ assert.ok(suggestions.some(p=>p.code===other.code));
+});
+
+test('sugar-free drink duplicates keep different registered formulations',()=>{
+ const source=next('3030303030320',{name:'Coca-Cola Zero',brand:'Coca-Cola',sugar:0,carbs:0,energy:0.3,categories:['en:colas']});
+ const samePack=next('3030303030321',{name:'Coca Cola Zero 330 ml',brand:'Coca-Cola',sugar:0,carbs:0,energy:0.3,categories:['en:colas']});
+ const changed=next('3030303030322',{name:'Coca Cola Zero 500 ml',brand:'Coca-Cola',sugar:0,carbs:0.4,energy:2,categories:['en:colas']});
+ const light=next('3030303030323',{name:'Coca-Cola Light',brand:'Coca-Cola',sugar:0,carbs:0,energy:0.3,categories:['en:colas']});
+ const res=relevantAlternatives(source,[samePack,changed,light],market);
+ assert.ok(!res.some(x=>x.code===samePack.code));
+ assert.deepEqual(new Set(res.map(x=>x.code)),new Set([changed.code,light.code]));
+});

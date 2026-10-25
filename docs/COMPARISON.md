@@ -111,3 +111,12 @@ Produksiden og sammenligningen bruker nå samme funksjon `productAdditiveEvidenc
 Tallet i «Kort fortalt» er antall eksplisitte *oppføringer*, ikke en beregnet total mengde tilsetningsstoffer. Manglende dokumentasjon betyr aldri «uten tilsetningsstoffer».
 
 En liten ordbasert sammenligning kan vise om eksempelvis «sukker», «søtstoff», «melk», «salt» eller «havre» er skrevet eksplisitt i bare én av ingredienslistene. Det er **ikke en fullstendig ingrediensparser**, og manglende ord i et felt er ikke bevis på at ingrediensen er fraværende. Hele ingredienslistene forblir tilgjengelige under detaljene.
+
+
+## Produkttreff, kildeversjoner og dubletter
+
+Automatiske forslag bruker søkeindeksen i Open Food Facts og kan derfor være eldre enn produktsiden. Hver sammenligning henter produktdata på nytt. Derfor krever vi eksplisitt markering av barista-/kaffevariant i produktnavnet, og en vare merket mandel-/soyadrikk i navnet kan ikke bli havredrikk bare fordi en kategori i søkeindeksen er feil.
+
+For vanlig cola og sukkerfri cola brukes nå også registrerte næringsverdier når pakningsdubletter fra samme merke grupperes. Produktoppføringer fra samme merke som har ulik energi, sukkerarter eller karbohydratinnhold blir **ikke automatisk gjemt som samme oppskrift**. Dette er kildebasert presentasjonslogikk, ikke en påstand om at oppskriften faktisk er endret.
+
+Forslag kan fortsatt være feil når selve produktregistreringen er feil. Det kan ikke løses helt uten verifiserte etiketter eller bedre kildeopplysninger.

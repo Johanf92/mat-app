@@ -25,6 +25,10 @@ const fold = (text: string) => text.toLowerCase().normalize('NFKD')
 const textOf = (p: FoodProduct) => fold([p.name, ...p.categories].join(' ').replace(/-/g, ' '));
 
 function isOatBased(p: FoodProduct): boolean {
+  // A mixed or explicitly different plant-base product is not a plain oat
+  // alternative, even if an old category tag claims "oat drink".
+  const name=fold(p.name);
+  if(/\b(?:almond|mandel|soy|soya|soja|rice|risdrikk|kokos|coconut|cashew|cashewnott)\b/.test(name))return false;
   const text = textOf(p);
   const ingredients = fold(p.ingredients ?? '');
   return /\b(oat|havre|hafer|avena|kaura)[a-z]*/.test(text + ' ' + ingredients)
@@ -334,7 +338,14 @@ function brandFamily(p: FoodProduct): string | null {
 function variantKey(p: FoodProduct, kind: ProductKind): string {
   const brand = brandFamily(p);
   if (!brand) return identity(p);
-  if (kind === 'cola-regular') return kind + '|' + brand;
+  // Packaging aliases may be collapsed only when key recorded values match.
+  // Two drinks from the same brand can use different recipes in different
+  // markets, and should not automatically disappear as "duplicates".
+  const colaMetrics=[p.energy,p.sugar,p.carbs];
+  const colaSignature=colaMetrics.filter(x=>x!==null).length>=2
+    ?colaMetrics.map(x=>x===null?'?':x.toFixed(2)).join('|')
+    :identity(p);
+  if (kind === 'cola-regular') return kind + '|' + brand + '|' + colaSignature;
   if (kind === 'cola-sugar-free') {
     // Light and Zero are both sugar-free, but their formulations can differ.
     // Only collapse package-size duplicates of the *same* named variant.
@@ -342,7 +353,7 @@ function variantKey(p: FoodProduct, kind: ProductKind): string {
     const variant = /\b(light|diet|lite)\b/.test(name) ? 'light'
       : /\bzero\b/.test(name) ? 'zero'
       : /\bmax\b/.test(name) ? 'max' : 'unspecified';
-    return kind + '|' + brand + '|' + variant;
+    return kind + '|' + brand + '|' + variant + '|' + colaSignature;
   }
   if (kind === 'greek-plain' || kind === 'plain-yogurt' || kind === 'kefir-plain'
     || kind === 'skyr-plain' || kind === 'cottage-cheese-plain'
