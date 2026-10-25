@@ -1,14 +1,29 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Image, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { type FoodProduct, getProduct, searchProducts } from '../src/openFoodFacts';
 import { useMarket } from '../src/MarketContext';
-import { type CompareFocus, COMPARE_OPTIONS, METRICS, comparisonInsight, metricAmount, comparisonDataWarnings, keyDifferences, additiveEvidenceRows, additiveEvidenceLabel, additiveDifferenceSummary } from '../src/comparison';
+import { type CompareFocus, COMPARE_OPTIONS, METRICS, comparisonInsight, metricAmount, comparisonDataWarnings, keyDifferences, additiveEvidenceRows, additiveEvidenceLabel, quickComparisonFacts } from '../src/comparison';
 import { productProfile, candidateNote } from '../src/alternatives';
 import { additiveInfo, formatAdditiveCode, summarizeAdditives, type AdditiveInfo } from '../src/additives';
 import { displayIngredientText } from '../src/ingredientEvidence';
 import { colors, InfoSheet, NovaBadge, SourceLink } from '../src/ui';
+
+type DetailId = 'focus' | 'nutrition' | 'ingredients' | 'additives' | 'sources';
+
+function DetailSection({id,title,open,onToggle,children}:PropsWithChildren<{
+ id:DetailId; title:string; open:boolean; onToggle:()=>void;
+}>) {
+ return <View testID={'detail-section-'+id} style={s.detailSection}>
+   <Pressable testID={'toggle-detail-'+id} accessibilityRole="button"
+     accessibilityLabel={title} accessibilityHint="Viser eller skjuler detaljene på denne siden."
+     accessibilityState={{expanded:open}} onPress={onToggle} style={s.detailHeader}>
+     <Text style={s.detailTitle}>{title}</Text><Text style={s.detailArrow}>{open?'−':'+'}</Text>
+   </Pressable>
+   {open && <View testID={'detail-content-'+id} style={s.detailContent}>{children}</View>}
+ </View>;
+}
 
 export default function Compare() {
  const router=useRouter();
@@ -27,11 +42,14 @@ export default function Compare() {
  const [searchError,setSearchError]=useState('');
  const [focus,setFocus]=useState<CompareFocus>('processing');
  const [showIngredients,setShowIngredients]=useState(false);
+ const [expandedFact,setExpandedFact]=useState<string|null>(null);
+ const [detailOpen,setDetailOpen]=useState<DetailId|null>(null);
  const [selectedAdditive,setSelectedAdditive]=useState<AdditiveInfo|null>(null);
  const searchController=useRef<AbortController|null>(null);
  useEffect(()=>{
    const controller=new AbortController();
    setError('');setLoading(true);setLeft(null);setRight(null);
+   setExpandedFact(null);setDetailOpen(null);setShowIngredients(false);
    if(!leftCode){setError('Velg et produkt før du sammenligner.');setLoading(false);return ()=>controller.abort();}
    Promise.all([getProduct(leftCode,controller.signal),rightCode?getProduct(rightCode,controller.signal):Promise.resolve(null)])
     .then(([a,b])=>{if(controller.signal.aborted)return;setLeft(a);setRight(b);
@@ -62,8 +80,8 @@ export default function Compare() {
  const variantWarning=left&&right?candidateNote(left,right):null;
  const notices=left&&right?comparisonDataWarnings(left,right):[];
  const evidenceRows=left&&right?additiveEvidenceRows(left,right):[];
- const evidenceDifferences=evidenceRows.filter(row=>row.differs);
- const sharedCodes=evidenceRows.filter(row=>!row.differs&&row.aEvidence!=='not-recorded');
+ const quickFacts=left&&right?quickComparisonFacts(left,right):[];
+ const toggleDetail=(id:DetailId)=>setDetailOpen(current=>current===id?null:id);
  return <SafeAreaView style={s.safe} edges={['top','bottom','left','right']}>
   <View style={s.toolbar}><Pressable accessibilityRole="button" onPress={()=>router.canGoBack()?router.back():router.replace('/')} style={s.backButton}><Text style={s.back}>← Tilbake</Text></Pressable></View>
   <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.page}>
@@ -102,59 +120,101 @@ export default function Compare() {
       {!sameType&&<Text style={s.warning}>Disse varene er ikke bekreftet som samme produkttype. Sammenligningen kan derfor være mindre relevant.</Text>}
       {!!sameType&&<Text style={s.note}>Varene er registrert som samme hovedtype. Oppskrift og variant kan likevel være forskjellige.</Text>}
       {!!variantWarning&&<Text style={s.warning}>{variantWarning}</Text>}
-      <View testID="key-differences" style={s.differences}>
-       <Text accessibilityRole="header" style={s.differencesTitle}>Hva er forskjellen?</Text>
-       {keyDifferences(left,right).map((entry,index)=><View key={entry.key} style={[s.differenceRow,index>0&&s.differenceDivider]}>
-         <Text style={s.differenceLabel}>{entry.label}</Text>
-         <Text style={s.body}>{entry.description}</Text>
-       </View>)}
-       {evidenceRows.length>0&&<View testID="additive-evidence-summary" style={s.additiveEvidenceSummary}>
-         <Text style={s.differenceLabel}>E-koder – hva er oppført?</Text>
-         {evidenceDifferences.length>0?evidenceDifferences.slice(0,3).map(row=><View key={row.code} style={s.evidenceHighlightRow}>
-           <Text style={s.evidenceCode}>{row.displayCode} · {row.name}</Text>
-           <Text style={s.evidenceDescription}>{row.role}. {additiveDifferenceSummary(row)}</Text>
-         </View>):<Text style={s.body}>De eksplisitte E-kodene har samme registreringsstatus hos begge varene.</Text>}
-         {evidenceDifferences.length>3&&<Text style={s.note}>Ytterligere {evidenceDifferences.length-3} forskjeller i E-koderegistreringene er vist lenger ned.</Text>}
-         {sharedCodes.length>0&&<Text style={s.note}>Oppført på samme måte for begge: {sharedCodes.slice(0,5).map(row=>row.displayCode).join(', ')}{sharedCodes.length>5?' med flere':''}.</Text>}
-         <Text style={s.note}>Ulik registrering er ikke bevis på at et stoff mangler i den andre varen. Dette er ingen sikkerhets- eller sunnhetsrangering.</Text>
-       </View>}
-       <Text style={s.note}>Bare registrerte opplysninger. Kontroller varevariant og målegrunnlag på emballasjen.</Text>
+
+      <View testID="comparison-overview" style={s.quickPanel}>
+        <Text accessibilityRole="header" style={s.quickTitle}>Kort oppsummert</Text>
+        <Text style={s.quickHint}>Trykk på et punkt for å lese mer om datagrunnlaget.</Text>
+        {quickFacts.map((fact,index)=><View key={fact.key} style={[s.quickRow,index>0&&s.quickDivider]}>
+          <Pressable testID={'quick-fact-'+fact.key} accessibilityRole="button"
+            accessibilityLabel={fact.label+'. '+fact.summary} accessibilityState={{expanded:expandedFact===fact.key}}
+            onPress={()=>setExpandedFact(current=>current===fact.key?null:fact.key)} style={s.quickTrigger}>
+            <View style={s.quickText}>
+              <Text style={s.quickLabel}>{fact.label}</Text>
+              <Text style={s.quickSummary}>{fact.summary}</Text>
+            </View>
+            <Text style={s.quickArrow}>{expandedFact===fact.key?'−':'+'}</Text>
+          </Pressable>
+          {expandedFact===fact.key&&<View testID={'quick-detail-'+fact.key} style={s.quickExplanation}>
+            <Text style={s.body}>{fact.detail}</Text>
+          </View>}
+        </View>)}
+        <Text style={s.quickFootnote}>Registrerte opplysninger, ikke en sunnhetsrangering. Manglende registrering er ikke bevis på fravær.</Text>
       </View>
-      <Text style={s.section}>Hva vil du se nærmere på?</Text>
-      <View style={s.options}>
-        {COMPARE_OPTIONS.map(o=><Pressable key={o.key} accessibilityRole="button" accessibilityState={{selected:focus===o.key}} style={[s.option,focus===o.key&&s.optionSelected]} onPress={()=>setFocus(o.key)}>
-         <Text style={[s.optionText,focus===o.key&&s.optionTextSelected]}>{o.label}</Text>
-        </Pressable>)}
+      {notices.length>0&&<View style={s.qualityCard}>
+        <Text style={s.qualityHeading}>Verdt å kontrollere</Text>
+        {notices.map((note,i)=><Text key={i} style={s.warning}>{note}</Text>)}
+      </View>}
+      <Text accessibilityRole="header" style={s.section}>Mer informasjon</Text>
+      <Text style={s.note}>Åpne den delen du vil undersøke. Du blir på samme side.</Text>
+      <View style={s.disclosures}>
+        <DetailSection id="focus" title="Forklar tallene" open={detailOpen==='focus'} onToggle={()=>toggleDetail('focus')}>
+          <Text style={s.note}>Velg det du vil se nærmere på:</Text>
+          <View style={s.options}>
+            {COMPARE_OPTIONS.map(o=><Pressable key={o.key} accessibilityRole="button"
+              accessibilityState={{selected:focus===o.key}} style={[s.option,focus===o.key&&s.optionSelected]}
+              onPress={()=>setFocus(o.key)}>
+              <Text style={[s.optionText,focus===o.key&&s.optionTextSelected]}>{o.label}</Text>
+            </Pressable>)}
+          </View>
+          <View style={s.insight}>
+            <Text style={s.insightTitle}>Dette viser dataene</Text>
+            <Text style={s.body}>{comparisonInsight(left,right,focus)}</Text>
+          </View>
+          <Text style={s.detailSubheading}>Andre observasjoner</Text>
+          {keyDifferences(left,right).map(entry=><View key={entry.key} style={s.additionalDifference}>
+            <Text style={s.differenceLabel}>{entry.label}</Text>
+            <Text style={s.body}>{entry.description}</Text>
+          </View>)}
+        </DetailSection>
+        <DetailSection id="nutrition" title="Hele næringstabellen" open={detailOpen==='nutrition'} onToggle={()=>toggleDetail('nutrition')}>
+          <Text style={s.note}>Per 100 g / 100 ml, slik kilden oppgir det. Manglende verdier betyr ikke null.</Text>
+          <View style={s.tableHeader}>
+            <Text style={s.metricLabel}>Egenskap</Text><Text style={s.metricValue}>A</Text><Text style={s.metricValue}>B</Text>
+          </View>
+          {METRICS.map(m=><View key={m.key} style={s.tableRow}>
+            <Text style={s.metricLabel}>{m.label}</Text>
+            <Text style={s.metricValue}>{metricAmount(left,m.key,m.unit)}</Text>
+            <Text style={s.metricValue}>{metricAmount(right,m.key,m.unit)}</Text>
+          </View>)}
+        </DetailSection>
+        <DetailSection id="ingredients" title="Ingredienslister" open={detailOpen==='ingredients'} onToggle={()=>toggleDetail('ingredients')}>
+          {([['A',left],['B',right]] as const).map(([letter,p])=><View key={p.code+'ingredients'} style={s.ingredients}>
+            <Text style={s.resultName}>Produkt {letter} · {p.name}</Text>
+            <Text style={s.body} numberOfLines={showIngredients?undefined:5}>
+              {displayIngredientText(p.ingredients)||'Ingredienslisten er ikke oppgitt.'}
+            </Text>
+          </View>)}
+          <Pressable accessibilityRole="button" accessibilityState={{expanded:showIngredients}}
+            onPress={()=>setShowIngredients(!showIngredients)} style={s.change}>
+            <Text style={s.changeText}>{showIngredients?'Vis kortere lister':'Vis hele ingredienslistene'}</Text>
+          </Pressable>
+          <Text style={s.note}>Ulik ordlyd er ikke i seg selv bevis på ulik oppskrift. Kontroller emballasjen ved allergi.</Text>
+        </DetailSection>
+        <DetailSection id="additives" title="E-koder og dokumentasjon" open={detailOpen==='additives'} onToggle={()=>toggleDetail('additives')}>
+          <Text style={s.note}>Kun eksplisitte E-koder fra ingredienslistene og databasens separate E-kodefelt. Trykk på en kode for forklaring.</Text>
+          {evidenceRows.length===0&&<Text style={s.body}>Ingen E-koder er dokumentert i disse feltene. Dette bekrefter ikke at varene er uten tilsetningsstoffer.</Text>}
+          {evidenceRows.map(row=><Pressable key={row.code} accessibilityRole="button"
+            accessibilityLabel={'Les om '+row.displayCode} onPress={()=>setSelectedAdditive(additiveInfo(row.code))} style={s.additiveBox}>
+            <Text style={s.resultName}>{row.displayCode} · {row.name}  ⓘ</Text>
+            <Text style={s.note}>{row.role}</Text>
+            <Text style={s.evidenceSource}>A · {additiveEvidenceLabel(row.aEvidence)}</Text>
+            <Text style={s.evidenceSource}>B · {additiveEvidenceLabel(row.bEvidence)}</Text>
+          </Pressable>)}
+          {([['A',left],['B',right]] as const).map(([letter,p])=>{
+            const raw=summarizeAdditives(p.additives).unrecognized;
+            return raw.length>0?<Text key={'raw-'+letter} style={s.note}>Produkt {letter} har også koder med ukjent format: {raw.join(', ')}.</Text>:null;
+          })}
+          <Text style={s.note}>Manglende oppføring betyr ikke at stoffet er fraværende. E290 er karbondioksid; en ensidig registrering beviser ikke ulikt innhold av kullsyre.</Text>
+        </DetailSection>
+        <DetailSection id="sources" title="Kilder og datakvalitet" open={detailOpen==='sources'} onToggle={()=>toggleDetail('sources')}>
+          <Text style={s.body}>Opplysningene kommer fra Open Food Facts og kan være feil eller ufullstendige.</Text>
+          <Text style={s.note}>Produkt A · Strekkode {left.code}</Text>
+          <Text style={s.note}>Produkt B · Strekkode {right.code}</Text>
+          <SourceLink label="Kilde for produkt A (åpner nettleseren)" url={'https://world.openfoodfacts.org/product/'+left.code}/>
+          <SourceLink label="Kilde for produkt B (åpner nettleseren)" url={'https://world.openfoodfacts.org/product/'+right.code}/>
+        </DetailSection>
       </View>
-      <View style={s.insight}><Text style={s.insightTitle}>Dette viser dataene</Text><Text style={s.body}>{comparisonInsight(left,right,focus)}</Text></View>
-      {notices.length>0&&<View style={s.qualityCard}><Text style={s.qualityHeading}>Verdt å kontrollere</Text>{notices.map((note,i)=><Text key={i} style={s.warning}>{note}</Text>)}</View>}
-      <Text style={s.section}>Næringsinnhold</Text>
-      <Text style={s.note}>Per 100 g / 100 ml som oppgitt av kilden. Manglende verdier er ikke null.</Text>
-      <View style={s.tableHeader}><Text style={s.metricLabel}>Egenskap</Text><Text style={s.metricValue}>A</Text><Text style={s.metricValue}>B</Text></View>
-      {METRICS.map(m=><View key={m.key} style={s.tableRow}><Text style={s.metricLabel}>{m.label}</Text><Text style={s.metricValue}>{metricAmount(left,m.key,m.unit)}</Text><Text style={s.metricValue}>{metricAmount(right,m.key,m.unit)}</Text></View>)}
-      <Text style={s.section}>Ingredienser</Text>
-      {[left,right].map((p,index)=><View key={p.code+'ingredients'} style={s.ingredients}><Text style={s.resultName}>Produkt {index===0?'A':'B'} · {p.name}</Text>
-       <Text style={s.body} numberOfLines={showIngredients?undefined:5}>{displayIngredientText(p.ingredients)||'Ingredienslisten er ikke oppgitt.'}</Text>
-      </View>)}
-      <Pressable accessibilityRole="button" onPress={()=>setShowIngredients(!showIngredients)} style={s.change}><Text style={s.changeText}>{showIngredients?'Vis mindre':'Vis hele ingredienslistene'}</Text></Pressable>
-      <Text style={s.section}>E-koder og kildegrunnlag</Text>
-      <Text style={s.note}>Kun eksplisitte E-koder fra de registrerte ingredienslistene og databasens separate E-kodefelt. Trykk på en kode for forklaring.</Text>
-      {evidenceRows.length===0&&<Text style={s.note}>Ingen E-koder er dokumentert i disse feltene. Dette bekrefter ikke at varene er uten tilsetningsstoffer.</Text>}
-      {evidenceRows.map(row=><Pressable key={row.code} accessibilityRole="button" accessibilityLabel={'Les om '+row.displayCode}
-        onPress={()=>setSelectedAdditive(additiveInfo(row.code))} style={s.additiveBox}>
-        <Text style={s.resultName}>{row.displayCode} · {row.name}  ⓘ</Text>
-        <Text style={s.note}>{row.role}</Text>
-        <Text style={s.evidenceSource}>A · {additiveEvidenceLabel(row.aEvidence)}</Text>
-        <Text style={s.evidenceSource}>B · {additiveEvidenceLabel(row.bEvidence)}</Text>
-      </Pressable>)}
-      {([['A',left],['B',right]] as const).map(([letter,p])=>{
-        const raw=summarizeAdditives(p.additives).unrecognized;
-        return raw.length>0?<Text key={'raw-'+letter} style={s.note}>Produkt {letter} har også koder med ukjent format i datakilden: {raw.join(', ')}.</Text>:null;
-      })}
-      <Text style={s.note}>Manglende kode i disse feltene betyr ikke at stoffet er fraværende. E290 er karbondioksid; en ensidig E290-registrering beviser ikke ulikt innhold av kullsyre.</Text>
-      <Text style={s.warning}>Kildeopplysninger kan være ufullstendige. Kontroller alltid emballasjen ved allergi. NOVA er ikke en samlet helsevurdering.</Text>
-      <SourceLink label="Kilde for produkt A (åpner nettleseren)" url={'https://world.openfoodfacts.org/product/'+left.code}/>
-      <SourceLink label="Kilde for produkt B (åpner nettleseren)" url={'https://world.openfoodfacts.org/product/'+right.code}/>
+      <Text style={s.warning}>Kontroller alltid emballasjen ved allergi. NOVA beskriver bearbeiding, ikke en samlet helsevurdering.</Text>
     </>}
   </ScrollView>
   <InfoSheet visible={selectedAdditive!==null}
@@ -197,5 +257,25 @@ const s=StyleSheet.create({
  tableRow:{flexDirection:'row',borderBottomColor:colors.line,borderBottomWidth:1,paddingVertical:12,gap:7,alignItems:'center'},
  metricLabel:{flex:1.35,fontSize:13,color:colors.ink},metricValue:{flex:1,fontSize:13,textAlign:'right',color:colors.ink,fontWeight:'700'},
  ingredients:{backgroundColor:'white',borderRadius:13,borderColor:colors.line,borderWidth:1,padding:14,gap:10},
- additiveBox:{backgroundColor:'white',borderRadius:13,borderColor:colors.line,borderWidth:1,padding:14,gap:7}
+ additiveBox:{backgroundColor:'white',borderRadius:13,borderColor:colors.line,borderWidth:1,padding:14,gap:7},
+ quickPanel:{backgroundColor:'#EDF4EE',borderRadius:18,padding:16,gap:10},
+ quickTitle:{fontSize:21,fontWeight:'800',color:colors.ink},
+ quickHint:{fontSize:12,lineHeight:18,color:colors.muted},
+ quickRow:{gap:4},
+ quickDivider:{borderTopWidth:1,borderTopColor:'#D5E2D8',paddingTop:10},
+ quickTrigger:{minHeight:60,flexDirection:'row',alignItems:'center',gap:12,paddingVertical:5},
+ quickText:{flex:1,gap:5},
+ quickLabel:{fontSize:14,fontWeight:'800',color:colors.green},
+ quickSummary:{fontSize:15,lineHeight:22,color:colors.ink},
+ quickArrow:{fontSize:24,color:colors.green},
+ quickExplanation:{paddingTop:4,paddingBottom:10},
+ quickFootnote:{fontSize:12,lineHeight:19,color:colors.muted,paddingTop:8},
+ disclosures:{borderBottomWidth:1,borderBottomColor:colors.line},
+ detailSection:{borderTopWidth:1,borderTopColor:colors.line},
+ detailHeader:{minHeight:62,paddingVertical:14,flexDirection:'row',alignItems:'center',gap:12},
+ detailTitle:{flex:1,fontSize:17,fontWeight:'700',color:colors.ink},
+ detailArrow:{fontSize:24,color:colors.green},
+ detailContent:{gap:13,paddingBottom:21},
+ detailSubheading:{fontSize:15,fontWeight:'800',color:colors.ink},
+ additionalDifference:{gap:5,paddingVertical:7},
 });
