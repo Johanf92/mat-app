@@ -260,6 +260,18 @@ export function productProfile(p: FoodProduct): MatchProfile | null {
   };
   return null;
 }
+/** Visual fallback only; the symbol never implies that a photo was sourced. */
+export function fallbackProductIcon(p: FoodProduct): string {
+ const kind=productProfile(p)?.kind;
+ if(!kind)return '🍽️';
+ if(kind.startsWith('cola'))return '🥤';
+ if(kind==='oats-plain'||kind==='oats-gluten-free'||kind==='corn-flakes')return '🥣';
+ if(kind==='bread-wholegrain'||kind==='bread-white')return '🍞';
+ if(kind==='crispbread-rye')return '🥖';
+ if(kind==='jam-strawberry')return '🍓';
+ if(kind==='tomato-soup-ready'||kind==='tomato-soup-powder')return '🍲';
+ return '🥛';
+}
 export function comparableCategory(p: FoodProduct): string | null {
   return productProfile(p)?.category ?? null;
 }

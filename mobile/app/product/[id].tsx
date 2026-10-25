@@ -8,7 +8,7 @@ import { useMarket } from '../../src/MarketContext';
 import { colors, InfoSheet, SourceLink, NovaBadge } from '../../src/ui';
 import { ADDITIVE_GENERAL_SOURCE, additiveSourceLabel, formatAdditiveCode, summarizeAdditives, type AdditiveInfo } from '../../src/additives';
 import { ingredientTerms, type IngredientTermInfo } from '../../src/ingredientTerms';
-import { comparableCategory, findAlternatives, productProfile, candidateNote } from '../../src/alternatives';
+import { comparableCategory, findAlternatives, productProfile, candidateNote, fallbackProductIcon } from '../../src/alternatives';
 import { displayIngredientText, ingredientCodeNote } from '../../src/ingredientEvidence';
 import { productDataStatus } from '../../src/productDataStatus';
 import { nutriScoreDescription, nutriScoreLabel, NUTRI_SCORE_SOURCE, NORWEGIAN_LABEL_SOURCE } from '../../src/nutriScore';
@@ -149,7 +149,7 @@ export default function ProductScreen() {
                   ? <Image source={{ uri: other.image }} style={styles.altImage} resizeMode="contain"
                       onError={() => setFailedAlternativeImages(current => current.includes(other.code) ? current : [...current, other.code])}/>
                   : <View style={styles.altImageFallback} accessibilityLabel="Produktbilde mangler">
-                      <Text style={styles.altImageEmoji}>{productProfile(other)?.kind.startsWith('cola') ? '🥤' : productProfile(other)?.kind.startsWith('oats') ? '🥣' : '🥛'}</Text>
+                      <Text style={styles.altImageEmoji}>{fallbackProductIcon(other)}</Text>
                     </View>}
                 <View style={{ flex: 1, gap: 6 }}>
                   <Pressable accessibilityRole="button" accessibilityLabel={'Se ' + other.name} onPress={() => router.push({ pathname: '/product/[id]', params: { id: other.code } })}>

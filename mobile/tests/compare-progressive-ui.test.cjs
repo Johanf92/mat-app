@@ -163,3 +163,11 @@ test('comparison shows Nutri-Score as an independent source value, not a ranking
  assert.match(whole,/Nutri-Score:\s+Ikke oppgitt/);
  assert.doesNotMatch(whole,/best ernæringsprofil|sunnere vinner/);
 });
+
+
+test('NOVA and Nutri-Score remain independent descriptions in comparison',()=>{
+ const h=harness(),content=text(h.render());
+ assert.match(content,/Nutri-Score \(A–E\) beskriver næringsprofil/);
+ assert.match(content,/NOVA \(1–4\) beskriver bearbeiding/);
+ assert.doesNotMatch(content,/kårer vinner|sunnest valgt/);
+});

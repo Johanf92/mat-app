@@ -129,6 +129,7 @@ export default function Compare() {
        </View>)}
       </View>
       <Text style={s.note}>Opplysningene hentes på nytt fra produktdatabasen. Forslagslisten kan vise eldre verdier.</Text>
+      <Text style={s.note}>Nutri-Score (A–E) beskriver næringsprofil. NOVA (1–4) beskriver bearbeiding. Dette er ikke en samlet helsekarakter.</Text>
       <Pressable accessibilityRole="button" style={s.change} onPress={()=>{setRight(null);router.setParams({right:''});}}><Text style={s.changeText}>Endre produkt B →</Text></Pressable>
       {!sameType&&!relatedVariantNote&&<Text style={s.warning}>Disse varene er ikke bekreftet som samme produkttype. Sammenligningen kan derfor være mindre relevant.</Text>}
       {!!sameType&&<Text style={s.note}>Varene er registrert som samme hovedtype. Oppskrift og variant kan likevel være forskjellige.</Text>}

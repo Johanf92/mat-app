@@ -21,7 +21,7 @@ loaded.require=id=>{
  throw Error('Unexpected dependency: '+id);
 };
 loaded._compile(out.outputText,sourcePath);
-const {productProfile,comparableCategory,relevantAlternatives,findAlternatives,candidateNote,labeledLactoseFree,relatedVariantComparisonNote}=loaded.exports;
+const {productProfile,comparableCategory,relevantAlternatives,findAlternatives,candidateNote,labeledLactoseFree,relatedVariantComparisonNote,fallbackProductIcon}=loaded.exports;
 const market={code:'no',name:'Norge',tag:'en:norway'};
 const base={code:'7394376616037',name:'iKaffe',brand:'Oatly',ingredients:'Havrebas, rapsolje, salt',categories:[],countries:['en:norway'],nova:3,
  protein:1.1,fat:3,carbs:7.1,sugar:3.4,energy:61,salt:0.1,fiber:0.8,additives:[],allergens:[]};
@@ -363,5 +363,20 @@ test('new category searches use one country-filtered text search without re-rank
    assert.equal(calls[0].type,'text');
    assert.equal(calls[0].args[0],expected);
    assert.equal(calls[0].args[1],market);
+ }
+});
+
+
+test('photo fallback symbols match the supported product type without inventing a picture',()=>{
+ const cases=[
+  ['Coca-Cola Zero Sugar','🥤'],['Havregryn','🥣'],
+  ['Corn Flakes','🥣'],['Grovbrød','🍞'],['Loff','🍞'],
+  ['Rugknekkebrød','🥖'],['Jordbærsyltetøy','🍓'],
+  ['Tomatsuppe ferdig','🍲'],['Lettmelk','🥛'],
+  ['Ukjent produkt','🍽️']
+ ];
+ for(const [name,expected] of cases){
+  const p=next('9998887776660',{name,brand:'Alternativ',ingredients:undefined});
+  assert.equal(fallbackProductIcon(p),expected,name);
  }
 });

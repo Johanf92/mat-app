@@ -55,6 +55,7 @@ function harness({ supported = true, find = async () => [], note = () => null, t
       comparableCategory: () => supported ? 'en:oat-drinks' : null,
       productProfile: () => supported ? { kind: 'oat-drink', label: 'havredrikker', category: 'en:oat-drinks' } : null,
       candidateNote: note,
+      fallbackProductIcon: other => other.name.includes('bread') ? '🍞' : '🥛',
       findAlternatives: async (p, m) => { calls.push({ product: p, market: m }); return find(p, m); },
     },
   };
@@ -253,4 +254,13 @@ test('product snapshot uses sourced facts and no invented health ranking',()=>{
  assert.match(text(box),/Kort fortalt/);
  assert.match(text(box),/NOVA/);
  assert.doesNotMatch(text(box),/sunneste|dårligste|beste valg/);
+});
+
+
+test('product alternative image fallback uses product-specific symbol',async()=>{
+ const bread={...product,code:'9999999999901',name:'Another bread',image:undefined};
+ const h=harness({find:async()=>[bread]});
+ byId(h.render(),'find-alternatives').props.onPress();await flush();
+ const panel=byId(h.render(),'product-alternatives');
+ assert.match(text(panel),/🍞/);
 });
