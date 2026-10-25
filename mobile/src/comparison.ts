@@ -137,7 +137,8 @@ export function quickComparisonFacts(a: FoodProduct, b: FoodProduct): QuickCompa
   const nutrition = overviewNutritionFacts(a,b,base);
   // Cap the numerical headlines at two. Leave room for other types of source
   // information, rather than implying a health ranking through more numbers.
-  facts.push(...nutrition.slice(0,2));
+  const incompleteData = !a.ingredients || !b.ingredients || ((a.nova === null) !== (b.nova === null));
+  facts.push(...nutrition.slice(0,incompleteData ? 1 : 2));
   const sugarKnown = a.sugar !== null && b.sugar !== null;
 
   const evidence = additiveEvidenceRows(a, b);
