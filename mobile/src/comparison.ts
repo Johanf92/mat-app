@@ -27,7 +27,7 @@ export function comparisonInsight(a: FoodProduct, b: FoodProduct, focus: Compare
   if (focus === 'processing') {
     if (a.nova === null || b.nova === null) return 'NOVA mangler for minst ett av produktene. Vi gjetter ikke bearbeidingsgrad.';
     if (a.nova === b.nova) return 'Begge produktene er registrert i NOVA ' + a.nova + '. Det betyr ikke at de har identisk sammensetning.';
-    return a.name + ' er registrert i NOVA ' + a.nova + ', mens ' + b.name + ' er registrert i NOVA ' + b.nova + '. NOVA beskriver bearbeiding, ikke en samlet helsescore.';
+    return a.name + ' er registrert i NOVA ' + a.nova + ', mens ' + b.name + ' er registrert i NOVA ' + b.nova + '. Vi kan ikke fastslå hvorfor klassifiseringene er ulike bare ut fra næringstallene. NOVA beskriver bearbeiding, ikke en samlet helsescore.';
   }
   if (focus === 'ingredients') {
     if (!a.ingredients || !b.ingredients) return 'Ingredienslisten mangler for minst ett produkt. Da kan vi ikke trekke sikre konklusjoner om forskjellene.';
@@ -41,4 +41,18 @@ export function comparisonInsight(a: FoodProduct, b: FoodProduct, focus: Compare
   const higher = x > y ? a.name : b.name;
   const qualifier = focus === 'sugar' ? ' Dette inkluderer naturlig forekommende sukker og sier ikke alene noe om tilsatt sukker.' : '';
   return higher + ' har ' + amount(difference) + ' mer ' + (focus === 'protein' ? 'protein' : 'sukkerarter') + ' per 100 g / 100 ml (slik kilden oppgir).' + qualifier;
+}
+
+
+/**
+ * Only assert cross-field contradictions directly visible in the source.
+ * Comparisons must never infer ingredients, added sugar or health outcomes.
+ */
+export function comparisonDataWarnings(a: FoodProduct, b: FoodProduct): string[] {
+  const notices: string[] = [];
+  for (const [letter, product] of [['A', a], ['B', b]] as const) {
+    if (product.sugar !== null && product.carbs !== null && product.sugar > product.carbs + 0.1)
+      notices.push('Produkt ' + letter + ' har registrert mer sukkerarter enn karbohydrater. Dette kan være en feil i datagrunnlaget.');
+  }
+  return notices;
 }
