@@ -15,31 +15,33 @@ for (const name of ['catalog', 'openFoodFacts']) {
 }
 process.on('exit', () => fs.rmSync(folder, { recursive: true, force: true }));
 const { DEFAULT_MARKET, MARKETS, numeric, readableText, novaInfo, amount, flag } = require(path.join(folder, 'catalog.js'));
-const { normalize, buildSearchUrl, buildCategoryUrl, buildProductUrl, searchProducts, getProduct } = require(path.join(folder, 'openFoodFacts.js'));
+const { normalize, buildSearchUrl, buildCategoryUrl, buildProductUrl, searchProducts, getProduct, searchResults, searchByCategory } = require(path.join(folder, 'openFoodFacts.js'));
 const base = { code: '7310867104494', product_name: 'Test', countries_tags: ['en:norway'] };
 
-test('Norway is default; market and language stay separate', () => {
+test('Norway is default; full-text search uses Search-a-licious with a country filter', () => {
   assert.equal(DEFAULT_MARKET.code, 'no');
   const u = new URL(buildSearchUrl('gresk yoghurt', DEFAULT_MARKET));
-  assert.equal(u.searchParams.get('tagtype_0'), 'countries');
-  assert.equal(u.searchParams.get('tag_0'), 'en:norway');
-  assert.equal(u.searchParams.get('search_terms'), 'gresk yoghurt');
-  assert.equal(u.searchParams.has('lc'), false);
+  assert.equal(u.hostname, 'search.openfoodfacts.org');
+  assert.equal(u.pathname, '/search');
+  assert.equal(u.searchParams.get('q'), 'gresk yoghurt countries_tags:"en:norway"');
+  assert.equal(u.searchParams.get('langs'), 'no,en');
+  assert.ok(u.searchParams.get('fields').includes('nutriments'));
 });
 test('country changes the filter; worldwide deliberately has no filter', () => {
   const es = MARKETS.find(m => m.code === 'es');
-  assert.equal(new URL(buildSearchUrl('yogur', es)).searchParams.get('tag_0'), 'en:spain');
+  assert.equal(new URL(buildSearchUrl('yogur', es)).searchParams.get('q'), 'yogur countries_tags:"en:spain"');
   const world = MARKETS.find(m => m.code === 'world');
-  assert.equal(new URL(buildSearchUrl('yoghurt', world)).searchParams.has('tagtype_0'), false);
+  assert.equal(new URL(buildSearchUrl('yoghurt', world)).searchParams.get('q'), 'yoghurt');
+  assert.equal(new URL(buildSearchUrl('Coca-Cola', DEFAULT_MARKET)).searchParams.get('q'), 'Coca Cola countries_tags:"en:norway"');
 });
-test('structured category search uses documented market filter, while all-land search omits it', () => {
+test('category search uses Search-a-licious clauses rather than the broken v2 endpoint', () => {
   const url = new URL(buildCategoryUrl('en:oat-drinks', DEFAULT_MARKET));
-  assert.equal(url.pathname, '/api/v2/search');
-  assert.equal(url.searchParams.get('categories_tags'), 'en:oat-drinks');
-  assert.equal(url.searchParams.get('countries_tags_en'), 'norway');
+  assert.equal(url.hostname, 'search.openfoodfacts.org');
+  assert.equal(url.pathname, '/search');
+  assert.equal(url.searchParams.get('q'), 'categories_tags:"en:oat-drinks" countries_tags:"en:norway"');
   assert.equal(url.searchParams.get('page_size'), '60');
   const all = new URL(buildCategoryUrl('en:greek-yogurts', MARKETS.find(m => m.code === 'world')));
-  assert.equal(all.searchParams.has('countries_tags_en'), false);
+  assert.equal(all.searchParams.get('q'), 'categories_tags:"en:greek-yogurts"');
 });
 test('barcodes are always global and do not leak a country into the URL', () => {
   const u = new URL(buildProductUrl(base.code));
@@ -90,7 +92,7 @@ test('request behavior: country guard, cache separation, global barcode, HTTP er
   const calls = [];
   global.fetch = async (url, options) => {
     calls.push({ url, options });
-    return { ok: true, status: 200, json: async () => ({ products: [base, { ...base, code: '5449000054227', countries_tags: ['en:spain'] }, { ...base, code: '3017620422003', countries_tags: [] }] }) };
+    return { ok: true, status: 200, json: async () => ({ hits: [base, { ...base, code: '5449000054227', countries_tags: ['en:spain'] }, { ...base, code: '3017620422003', countries_tags: [] }] }) };
   };
   try {
     const norway = await searchProducts('country-test', DEFAULT_MARKET);
@@ -114,4 +116,21 @@ test('request behavior: country guard, cache separation, global barcode, HTTP er
     global.fetch = async () => ({ ok: false, status: 404 });
     assert.equal(await getProduct('9999999999999'), null);
   } finally { global.fetch = originalFetch; }
+});
+
+test('Search-a-licious hits are normalised and strictly filtered by country', () => {
+ const product = { ...base, categories_tags: ['en:oat-drinks'], brands: 'Test brand',
+   nutriments: { proteins_100g: 3.4, sugars_100g: 0 } };
+ const selected = searchResults({ hits: [product, { ...product, code: '5449000054227', countries_tags: ['en:spain'] }] }, DEFAULT_MARKET);
+ assert.equal(selected.length, 1);
+ assert.equal(selected[0].code, base.code);
+ assert.equal(selected[0].protein, 3.4);
+ assert.equal(selected[0].sugar, 0);
+ assert.deepEqual(searchResults({ hits: [product] }, MARKETS.find(m => m.code === 'world')).map(p=>p.code), [base.code]);
+ assert.throws(() => searchResults({ products: [product] }, DEFAULT_MARKET), /uventet svar/);
+});
+test('search normaliser works for language objects and brand arrays in search hits', () => {
+ const product = normalize({ ...base, product_name: { no: 'Norsk navn', en: 'English name' }, brands: ['Merke A','Merke B'] });
+ assert.equal(product.name, 'Norsk navn');
+ assert.equal(product.brand, 'Merke A');
 });
