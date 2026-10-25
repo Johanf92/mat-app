@@ -45,6 +45,13 @@ test('barista oat drinks do not mix with plain oat or almond coffee drinks',()=>
  const almond=next('55555555',{name:'Almond Barista',brand:'Almond Inc',ingredients:'Mandel, vann'});
  assert.deepEqual(relevantAlternatives(base,[coffee,plain,almond],market).map(x=>x.code),['33333333']);
 });
+test('explicit flavoured categories and coffee flavours are not plain alternatives',()=>{
+ const source=next('11111111',{name:'Gresk naturell yoghurt',brand:'Plain',ingredients:'Melk, kultur',categories:[]});
+ const flavouredGreek=next('22222222',{name:'Greek yogurt',brand:'Flavor',ingredients:'Milk, flavour',categories:['en:flavored-greek-yogurts']});
+ assert.deepEqual(relevantAlternatives(source,[flavouredGreek],market),[]);
+ const chocolate=next('33333333',{name:'Chocolate Oat Barista',brand:'Cocoa',ingredients:'Oats, cocoa',categories:['en:oat-drinks']});
+ assert.deepEqual(relevantAlternatives(base,[chocolate],market),[]);
+});
 test('norwegian market guard, same identity and incomplete entries are filtered',()=>{
  const good=next('22222222',{name:'Barista Havredrikk',brand:'Other',countries:['en:norway']});
  const foreign=next('33333333',{name:'Barista Havredrikk',brand:'Other2',countries:['en:sweden']});
