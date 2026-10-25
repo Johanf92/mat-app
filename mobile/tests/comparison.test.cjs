@@ -266,3 +266,11 @@ test('comparison does not misreport a visually grouped parent E340 as absent',()
  assert.equal(child.aEvidence,'both');
  assert.equal(child.bEvidence,'not-recorded');
 });
+
+test('negative label language in ingredients is not reported as an explicitly listed ingredient',()=>{
+ const detector=ingredientComparisonModule.ingredientMentionDifferences;
+ assert.deepEqual(detector({ingredients:'Vann, uten tilsatt sukker'},{ingredients:'Vann'}),[]);
+ assert.deepEqual(detector({ingredients:'Water, no added sugar'},{ingredients:'Water'}),[]);
+ assert.deepEqual(detector({ingredients:'Vann, uten melk og uten salt'},{ingredients:'Vann'}),[]);
+ assert.deepEqual(detector({ingredients:'Vann, sukker, uten tilsatt søtstoff'},{ingredients:'Vann'}).map(x=>x.key),['sugar']);
+});

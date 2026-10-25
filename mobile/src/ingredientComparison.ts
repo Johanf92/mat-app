@@ -18,8 +18,12 @@ const TERMS:readonly ListedTerm[]=[
 export type IngredientMentionDifference={key:string;label:string;side:'A'|'B'};
 export function ingredientMentionDifferences(a:Pick<FoodProduct,'ingredients'>,b:Pick<FoodProduct,'ingredients'>):IngredientMentionDifference[]{
   if(!a.ingredients?.trim()||!b.ingredients?.trim())return [];
-  const left=displayIngredientText(a.ingredients).normalize('NFKC');
-  const right=displayIngredientText(b.ingredients).normalize('NFKC');
+  // Ingredient data occasionally contain marketing/absence language.
+  // Negated phrases must not count as a positive ingredient mention.
+  const stripNegations=(value:string)=>displayIngredientText(value).normalize('NFKC')
+    .replace(/\b(?:uten|without|no)\s+(?:(?:tilsatt|added)\s+)?(?:sukker|sugar|søtstoff(?:er)?|sweeteners?|melk|milk|havre|oats|salt)\b/gi,' ');
+  const left=stripNegations(a.ingredients);
+  const right=stripNegations(b.ingredients);
   return TERMS.flatMap(t=>{
     const inA=t.re.test(left),inB=t.re.test(right);
     if(inA===inB)return [];

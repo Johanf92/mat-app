@@ -11,7 +11,7 @@ export function productSnapshot(p:FoodProduct,registeredAdditiveCount:number,unr
   p.nova===null?'NOVA er ikke oppgitt.':'Registrert bearbeidingsgrad: NOVA '+p.nova+'.',
   p.sugar===null?'Sukkerarter er ikke oppgitt.':'Sukkerarter: '+amount(p.sugar)+' per oppgitt 100 g / 100 ml.',
   registeredAdditiveCount>0
-   ?registeredAdditiveCount+' eksplisitt E-kodeoppføring'+(registeredAdditiveCount===1?'':'er')+' i ingredienslisten og/eller eget E-kodefelt.'
+   ?registeredAdditiveCount+' eksplisitt'+(registeredAdditiveCount===1?'':'e')+' E-kodeoppføring'+(registeredAdditiveCount===1?'':'er')+' i ingredienslisten og/eller eget E-kodefelt.'
    :unrecognizedCount>0?'Ingen gjenkjennelige E-numre, men '+unrecognizedCount+' oppføring'+(unrecognizedCount===1?'':'er')+' med ukjent format i datafeltet.'
    :'Ingen eksplisitte E-koder registrert i ingredienslisten eller eget E-kodefelt. Det betyr ikke at varen er fri for tilsetningsstoffer.',
  ];
