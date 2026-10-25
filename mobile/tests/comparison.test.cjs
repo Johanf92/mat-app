@@ -15,7 +15,7 @@ loaded.require=id=>{
  throw Error('Unexpected dependency: '+id);
 };
 loaded._compile(compiled.outputText,sourcePath);
-const {comparisonInsight,metricAmount,METRICS,COMPARE_OPTIONS}=loaded.exports;
+const {comparisonInsight,metricAmount,METRICS,COMPARE_OPTIONS,comparisonDataWarnings}=loaded.exports;
 const a={name:'Naturell yoghurt A',nova:1,ingredients:'Melk, kultur',protein:10,sugar:4,fat:3,carbs:5,energy:90,salt:0.1,fiber:0};
 const b={...a,name:'Naturell yoghurt B',nova:4,protein:8,sugar:11,ingredients:'Melk, sukker, kultur',energy:110};
 
@@ -47,4 +47,18 @@ test('ingredient text is never naively split into an invented ingredient count',
 test('all seven macros are presented and focus options are independent',()=>{
  assert.deepEqual(METRICS.map(x=>x.key),['energy','protein','fat','carbs','sugar','fiber','salt']);
  assert.deepEqual(COMPARE_OPTIONS.map(x=>x.key),['processing','ingredients','protein','sugar']);
+});
+
+test('different NOVA groups are not explained away using macros', () => {
+ const message=comparisonInsight(a,b,'processing');
+ assert.match(message,/ikke fastslå hvorfor/);
+ assert.match(message,/næringstallene/);
+});
+test('impossible sugar values warn without inventing ingredient information',()=>{
+ const suspect={...a,sugar:12,carbs:4};
+ const warnings=comparisonDataWarnings(suspect,b);
+ assert.equal(warnings.length,1);
+ assert.match(warnings[0],/Produkt A/);
+ assert.match(warnings[0],/mer sukkerarter enn karbohydrater/);
+ assert.deepEqual(comparisonDataWarnings(a,b),[]);
 });
