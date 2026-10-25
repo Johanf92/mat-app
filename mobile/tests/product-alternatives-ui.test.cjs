@@ -287,7 +287,7 @@ test('source allergen aliases display as one name while keeping all original tag
 });
 test('empty separate E-code field does not assert the product is additive-free',()=>{
  const h=harness(),txt=text(byId(h.render(),'missing-e-codes'));
- assert.match(txt,/Ingen E-numre registrert/);
+ assert.match(txt,/Ingen eksplisitte E-numre registrert/);
  assert.match(txt,/E-kodefelt/);
  assert.match(txt,/ikke at varen er fri/);
 });

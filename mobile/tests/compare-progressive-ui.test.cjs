@@ -70,6 +70,7 @@ function harness({oatVariants=false}={}){
     formatAdditiveCode:s=>s,summarizeAdditives:()=>({unrecognized:[]})
   },
   '../src/ingredientEvidence':{displayIngredientText:s=>s},
+  '../src/ingredientComparison':{ingredientMentionDifferences:()=>[],ingredientComparisonInsight:()=>''},
   '../src/productDataStatus':{productDataStatus:()=>({headline:'Oppgitt i kilden: 7 av 7 næringsfelt.',notes:[]})},
   '../src/nutriScore':{nutriScoreLabel:x=>x?x.toUpperCase():'Ikke oppgitt'},
   '../src/ui':{colors:{green:'#236b4b',page:'#fafbf8',ink:'#1c3428',muted:'#617368',line:'#dde6df'},
