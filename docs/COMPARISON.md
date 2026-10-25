@@ -17,19 +17,20 @@ Følgende bruksområder har bevisst avgrensede regler:
 - Gresk naturell yoghurt blandes ikke med fruktyoghurt, vaniljeyoghurt eller vanlig yoghurt.
 - Vanlig naturell yoghurt får egen kategori.
 
-Det brukes relevante Open Food Facts-kategorier, deretter eventuelt ett fulltekstsøk når metadataene er ufullstendige. Landtilknytning kontrolleres også etter at API-et har svart; tilfeldige produkter fra andre markeder vises ikke som lokalvarer. Ukjente typer får manuell sammenligning i stedet for vilkårlige anbefalinger.
+Vi søker nå etter relevante ord for bruksområdet i Search-a-licious, for eksempel «barista» eller «gresk yoghurt», og filtrerer deretter kandidater etter faktisk produkttype. Det er nødvendig fordi kategorisøkene for disse varene ga null treff i det nye søkeindekset under testing i oktober 2026. Landtilknytning kontrolleres også etter API-svaret; tilfeldige produkter fra andre markeder vises ikke som lokalvarer. Ukjente produkttyper får manuell sammenligning i stedet for vilkårlige anbefalinger.
 
 Resultater sorteres etter tilgjengelig datagrunnlag og gjenkjennelighet, **ikke** etter «sunnhet». Overordnede kategorier og produktnavn er feilutsatte. Det er bevisst mulig at ingen resultater vises.
 
 ## API
 
-- Produkt: `/api/v2/product/{barcode}.json`
-- Strukturert kategorisøk: `/api/v2/search?categories_tags=...&countries_tags_en=norway`
-- Ved behov: eksisterende fulltekstsøk `/cgi/search.pl`
-- Maksimalt to søkeforespørsler for et alternativsøk; minnecache og klientbasert begrensning
-- Norsk standardmarked er en filtrering, ikke en garanti for at varen er tilgjengelig i butikk
+- Produktoppslag: `https://world.openfoodfacts.org/api/v2/product/{barcode}.json`
+- Fulltekstsøk og alternativer: `https://search.openfoodfacts.org/search?q=...` (Search-a-licious)
+- Ett søk per alternativsøk, samt klientbasert forespørselsgrense og korttids-cache
+- Valgt land sendes som `countries_tags:"en:norway"` i søket og kontrolleres på hver kandidat etterpå
+- Norsk standardmarked betyr registrering for landet, ikke garantert butikklager
+- Søkeresultatene kan være ufullstendige: Search-a-licious hadde i oktober 2026 en rapportert gammel produksjonsindeks, mens strekkodeoppslag leser nyere produktdata direkte
 
-API-dokumentasjon: https://openfoodfacts.github.io/documentation/docs/Product-Opener/v2/search/get-search/
+Referanser: https://openfoodfacts.github.io/search-a-licious/users/ref-openapi/ og https://github.com/openfoodfacts/search-a-licious/issues/469
 
 ## Gjenstående kvalitetsarbeid
 

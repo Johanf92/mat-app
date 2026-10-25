@@ -38,6 +38,14 @@ node --test tests/*.test.cjs
 
 GitHub Actions kjører de samme kontrollene ved endringer.
 
+## Søk og datakvalitet
+
+Navnesøk og søk etter lignende matvarer bruker Search-a-licious (`search.openfoodfacts.org/search`).
+Strekkodeskanning bruker fortsatt direkte produktoppslag (`world.openfoodfacts.org/api/v2/product`).
+Det eldre `/cgi/search.pl` og det gamle kategorisøket er fjernet fra appens brukerflyt etter at de returnerte HTTP 503 i oktober 2026.
+
+Søkedata kan være eldre enn den gjeldende produktdatabasen. Per oktober 2026 har Search-a-licious en rapportert utdatert produksjonsindeks, så produkter som finnes ved strekkode kan mangle i navnesøk. Søk er ikke komplett butikkregister.
+
 ## Data og begrensninger
 
 Open Food Facts er fellesskapsdrevet og kan inneholde feil, manglende felter og flerspråklige ingredienslister. Manglende E-stoffer eller allergener betyr **ikke** at produktet er uten dem. NOVA måler bearbeiding og er ikke en samlet helsevurdering.

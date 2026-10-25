@@ -6,7 +6,8 @@
 - [x] Landvelger og globalt strekkodeoppslag
 - [x] NOVA 1–4 med farger og forklaring
 - [x] Enkel E-stoffoppslagsbase med trykkbar forklaring, uten dobbeltelling av E340-familien
-- [x] Forsiktig søk etter samme bruksområde, også med fallback når kategoritagger mangler
+- [x] Forsiktig navnesøk etter samme bruksområde, med kontroll av produktnavn, land og tilgjengelige data
+- [x] Byttet fra feilende legacy-søk (HTTP 503) til Search-a-licious (lesesøk)
 - [x] Sammenligning av to faktiske produkter med vekt på bearbeiding, ingredienser, protein og sukker
 - [x] Manuelt produktvalg når forslag ikke støttes
 - [x] Automatiske TypeScript- og logikktester i GitHub Actions
