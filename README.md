@@ -44,13 +44,13 @@ Navnesøk og søk etter lignende matvarer bruker Search-a-licious (`search.openf
 Strekkodeskanning bruker fortsatt direkte produktoppslag (`world.openfoodfacts.org/api/v2/product`).
 Det eldre `/cgi/search.pl` og det gamle kategorisøket er fjernet fra appens brukerflyt etter at de returnerte HTTP 503 i oktober 2026.
 
-Søkedata kan være eldre enn den gjeldende produktdatabasen. Per oktober 2026 har Search-a-licious en rapportert utdatert produksjonsindeks, så produkter som finnes ved strekkode kan mangle i navnesøk. Søk er ikke komplett butikkregister.
+Søkeresultatenes NOVA, bilder og næringstall kan være eldre enn den gjeldende produktdatabasen. Sammenligningsvisningen henter begge produktene på nytt. Per oktober 2026 har Search-a-licious en rapportert utdatert produksjonsindeks, så produkter som finnes ved strekkode kan mangle i navnesøk. Søk er ikke komplett butikkregister.
 
 ## Data og begrensninger
 
 Open Food Facts er fellesskapsdrevet og kan inneholde feil, manglende felter og flerspråklige ingredienslister. Manglende E-stoffer eller allergener betyr **ikke** at produktet er uten dem. NOVA måler bearbeiding og er ikke en samlet helsevurdering.
 
-Landregistrering er ikke dokumentasjon på butikktilgjengelighet. Alternativmotoren støtter foreløpig bare noen få produktkategorier (havredrikker, havrebaserte kaffedrikker, gresk naturell yoghurt og naturell yoghurt). Den finner sammenlignbare varer, **ikke automatisk bedre** varer.
+Landregistrering er ikke dokumentasjon på butikktilgjengelighet. Alternativmotoren støtter foreløpig et avgrenset utvalg: havredrikker, havrebaserte kaffedrikker, gresk naturell yoghurt, naturell yoghurt, vanlig cola og sukkerfri cola. Den finner sammenlignbare varer, **ikke automatisk bedre** varer.
 
 Se [sammenligningslogikken](docs/COMPARISON.md) og [utviklingsplanen](docs/ROADMAP.md). Backend og offline-lagring er planlagt senere.
 

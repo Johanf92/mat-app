@@ -16,10 +16,14 @@ Følgende bruksområder har bevisst avgrensede regler:
 - Vanlige havredrikker blandes ikke med barista-varianter.
 - Gresk naturell yoghurt blandes ikke med fruktyoghurt, vaniljeyoghurt eller vanlig yoghurt.
 - Vanlig naturell yoghurt får egen kategori.
+- Vanlig cola sammenlignes med vanlig cola, sukkerfri cola med sukkerfri cola. Energy, Dreamworld, kirsebær, kaffe og andre særvarianter utelates.
+- «Gresk yoghurt» alene er ikke bevis for at yoghurten er naturell. Vi krever eksplisitt merking eller en kort og relevant melke-/kulturingrediensliste.
 
 Vi søker nå etter relevante ord for bruksområdet i Search-a-licious, for eksempel «barista» eller «gresk yoghurt», og filtrerer deretter kandidater etter faktisk produkttype. Det er nødvendig fordi kategorisøkene for disse varene ga null treff i det nye søkeindekset under testing i oktober 2026. Landtilknytning kontrolleres også etter API-svaret; tilfeldige produkter fra andre markeder vises ikke som lokalvarer. Ukjente produkttyper får manuell sammenligning i stedet for vilkårlige anbefalinger.
 
-Resultater sorteres etter tilgjengelig datagrunnlag og gjenkjennelighet, **ikke** etter «sunnhet». Overordnede kategorier og produktnavn er feilutsatte. Det er bevisst mulig at ingen resultater vises.
+Resultater sorteres etter typebevis og tilgjengelig datagrunnlag, **ikke** etter «sunnhet». Store karbohydratforskjeller merkes som noe brukeren bør undersøke, ikke som bevis på at en variant er sunnere.
+
+Søkeresultater kan vise utdatert NOVA og næringsinnhold. I sammenligningen henter appen begge strekkodene fra produktdatabasen på nytt, og forklarer at avvik mellom gamle og nye verdier kan forekomme. Overordnede kategorier og produktnavn er feilutsatte. Det er bevisst mulig at ingen resultater vises.
 
 ## API
 

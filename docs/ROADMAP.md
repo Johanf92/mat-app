@@ -10,6 +10,9 @@
 - [x] Byttet fra feilende legacy-søk (HTTP 503) til Search-a-licious (lesesøk)
 - [x] Sammenligning av to faktiske produkter med vekt på bearbeiding, ingredienser, protein og sukker
 - [x] Manuelt produktvalg når forslag ikke støttes
+- [x] Strengere skille mellom naturell og uavklarte yoghurtvarianter
+- [x] Egen matching for vanlig cola og sukkerfri cola, uten energidrikker og spesialsmaker
+- [x] Synlige forbehold ved store karbohydratforskjeller og kildeverdier som ikke stemmer overens
 - [x] Automatiske TypeScript- og logikktester i GitHub Actions
 
 ## Prioriteres videre
