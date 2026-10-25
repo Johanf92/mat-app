@@ -164,7 +164,7 @@ export default function ProductScreen() {
                     <Text style={styles.additiveName}>{other.name}</Text><Text style={styles.caption}>{other.brand}</Text>
                   </Pressable>
                   <Text style={styles.caption}>Protein {amount(other.protein)} · Fett {amount(other.fat)} · Karbohydrat {amount(other.carbs)}</Text>
-                  <NovaBadge group={other.nova} compact />
+                  <Text style={styles.caption}>NOVA hentes på nytt ved sammenligning</Text>
                   {!!candidateNote(p, other) && <Text style={styles.candidateNote}>{candidateNote(p, other)}</Text>}
                   <Pressable accessibilityRole="button" accessibilityLabel={'Sammenlign ' + p.name + ' med ' + other.name}
                     onPress={() => router.push({ pathname: '/compare', params: { left: p.code, right: other.code } })} style={styles.compareButton}>
