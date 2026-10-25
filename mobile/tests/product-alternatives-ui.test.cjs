@@ -208,6 +208,6 @@ test('ingredient term opens a sourced explanation without changing additive coun
  assert.equal(sheet.props.visible,true);
  assert.match(text(sheet),/Samlebetegnelse/);
  assert.ok(nodes(sheet).some(n=>n.type==='SourceLink'&&n.props.url===term.source));
- assert.match(text(tree),/Tilsetningsstoffer/);
+ assert.ok(nodes(tree).some(n=>n.props?.title==='Tilsetningsstoffer'), 'aroma must not create an E-number entry');
  assert.equal(h.routes.length,0);
 });
