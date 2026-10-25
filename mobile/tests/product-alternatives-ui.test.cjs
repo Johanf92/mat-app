@@ -63,6 +63,7 @@ function harness({ supported = true, find = async () => [], note = () => null, t
       nutriScoreDescription: x => x ? 'Fra kilden: '+x : 'Ikke registrert',
       NUTRI_SCORE_SOURCE:'https://example.org/nutriscore',NORWEGIAN_LABEL_SOURCE:'https://example.org/nokkelhullet'},
     '../../src/productSnapshot': {productSnapshot:()=>['NOVA 3 fra kilden.','Sukkerarter: 3 g per 100 g / 100 ml.']},
+    '../../src/discovery': { verifiedProcessingDiscovery: () => false },
     '../../src/alternatives': {
       comparableCategory: () => supported ? 'en:oat-drinks' : null,
       productProfile: () => supported ? { kind: 'oat-drink', label: 'havredrikker', category: 'en:oat-drinks' } : null,
