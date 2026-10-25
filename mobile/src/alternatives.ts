@@ -27,7 +27,7 @@ function greek(p: FoodProduct): boolean {
 }
 function flavoured(p: FoodProduct): boolean {
   // Explicit flavour terms only. An unflavoured food may naturally contain sugars.
-  return /jordbaer|strawberry|vanil|vanilla|honning|honey|blueberry|blabaer|raspberry|bringebaer|mango|chocolate|sjokolade|kokos|coconut|peach|fersken|banan|frukt|fruit|lemon|sitron|caramel|karamell/.test(descriptiveText(p));
+  return /jordbaer|strawberry|vanil|vanilla|honning|honey|blueberry|blabaer|raspberry|bringebaer|mango|chocolate|sjokolade|kokos|coconut|peach|fersken|banan|frukt|fruit|lemon|sitron|caramel|karamell|\b(flavoured|flavored|flavour|flavor|smaksatt|sotet|sweetened|aromatisert)\b/.test(descriptiveText(p));
 }
 function isBarista(p: FoodProduct): boolean {
   return /barista|ikaffe|for coffee|til kaffe|coffee edition|kaffedrikk|kahvi/.test(descriptiveText(p));
@@ -73,6 +73,7 @@ export function comparableCategory(p: FoodProduct): string | null {
 export function matchesProfile(p: FoodProduct, profile: MatchProfile): boolean {
   const candidate = productProfile(p);
   if (!candidate) return false;
+  if (profile.kind === 'oat-barista' && flavoured(p)) return false;
   // A plain oat drink must not accidentally be compared with a barista drink,
   // and plain Greek yogurt must not be compared with fruit-flavoured yogurts.
   return candidate.kind === profile.kind;
