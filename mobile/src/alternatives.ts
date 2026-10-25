@@ -120,6 +120,40 @@ export function comparableCategory(p: FoodProduct): string | null {
 export function matchesProfile(p: FoodProduct, profile: MatchProfile): boolean {
   return productProfile(p)?.kind === profile.kind;
 }
+/** Only a label claim, not a test of lactose content or milk allergen safety. */
+export function labeledLactoseFree(p: FoodProduct): boolean {
+  const name = fold(p.name);
+  return /laktosefri|lactose[\s-]*free|laktosfri|laktosefrei|sin lactosa|sans lactose/.test(name)
+    || p.categories.some(tag => /lactose-free|lactosefree/.test(tag));
+}
+function brandFamily(p: FoodProduct): string | null {
+  const brand = fold(p.brand).replace(/[^a-z0-9]+/g, ' ').trim();
+  const name = fold(p.name).replace(/[^a-z0-9]+/g, ' ').trim();
+  if (/^coca cola\b/.test(brand) || /^coca cola\b/.test(name)) return 'coca-cola';
+  if (/^pepsi\b/.test(brand) || /^pepsi\b/.test(name)) return 'pepsi';
+  const first = brand.split(' ')[0];
+  return !first || ['merke', 'unknown', 'ikke', 'unspecified'].includes(first) ? null : first;
+}
+/**
+ * Group only well-supported lookalikes. For cola, different package sizes of
+ * one producer's ordinary recipe are not useful automatic alternatives.
+ * For yoghurts, group same brand, same lactose-free label status and same
+ * documented nutrition; unknown values must not be silently treated as equal.
+ */
+function variantKey(p: FoodProduct, kind: ProductKind): string {
+  const brand = brandFamily(p);
+  if (!brand) return identity(p);
+  if (kind === 'cola-regular' || kind === 'cola-sugar-free') {
+    return kind + '|' + brand;
+  }
+  if (kind === 'greek-plain' || kind === 'plain-yogurt') {
+    const metrics = [p.energy, p.protein, p.fat, p.carbs, p.sugar];
+    if (metrics.filter(v => v !== null).length < 3) return identity(p);
+    return kind + '|' + brand + '|' + (labeledLactoseFree(p) ? 'lactose-free' : 'unspecified')
+      + '|' + metrics.map(v => v === null ? '?' : v.toFixed(3)).join('|');
+  }
+  return identity(p);
+}
 function identity(p: FoodProduct): string {
   // Separate brands with the same name, but remove case/punctuation duplicates.
   return fold(p.brand + '|' + p.name).replace(/[^a-z0-9|]/g, '');
@@ -144,26 +178,37 @@ function exactLabelMatch(p: FoodProduct, kind: ProductKind): number {
 export function relevantAlternatives(source: FoodProduct, options: FoodProduct[], market: Market): FoodProduct[] {
   const profile = productProfile(source);
   if (!profile) return [];
-  const seen = new Set<string>([identity(source)]);
-  const found: FoodProduct[] = [];
-  for (const p of options) {
-    if (p.code === source.code || (market.tag && !p.countries.includes(market.tag))
-      || !matchesProfile(p, profile) || !usableData(p)) continue;
-    const key = identity(p);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    found.push(p);
-  }
-  return found.sort((a, b) =>
+  // Choose the best documented member BEFORE folding duplicate records.
+  const sorted = options.filter(p =>
+    p.code !== source.code && (!market.tag || p.countries.includes(market.tag))
+    && matchesProfile(p, profile) && usableData(p)
+  ).sort((a, b) =>
     exactLabelMatch(b, profile.kind) - exactLabelMatch(a, profile.kind)
     || quality(b) - quality(a) || a.name.localeCompare(b.name, 'nb')
-  ).slice(0, 6);
+  );
+  const seen = new Set<string>([identity(source), variantKey(source, profile.kind)]);
+  const found: FoodProduct[] = [];
+  for (const p of sorted) {
+    const key = variantKey(p, profile.kind);
+    if (seen.has(key) || seen.has(identity(p))) continue;
+    seen.add(key);
+    seen.add(identity(p));
+    found.push(p);
+    if (found.length === 6) break;
+  }
+  return found;
 }
 
 /** Explains surprising data without claiming that a candidate is unhealthy. */
 export function candidateNote(source: FoodProduct, candidate: FoodProduct): string | null {
   const a = productProfile(source), b = productProfile(candidate);
   if (!a || !b || a.kind !== b.kind) return null;
+  if (a.kind === 'greek-plain' || a.kind === 'plain-yogurt') {
+    if (labeledLactoseFree(source) && !labeledLactoseFree(candidate))
+      return 'Denne varianten er ikke registrert som laktosefri. Kontroller emballasjen før du vurderer den som erstatning. Laktosefri betyr ikke melkefri.';
+    if (!labeledLactoseFree(source) && labeledLactoseFree(candidate))
+      return 'Dette forslaget er merket laktosefri. Det forteller ikke om produktet er melkefritt.';
+  }
   if ((a.kind === 'greek-plain' || a.kind === 'plain-yogurt')
     && source.carbs !== null && candidate.carbs !== null
     && Math.abs(source.carbs - candidate.carbs) >= 7) {
