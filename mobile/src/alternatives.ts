@@ -169,7 +169,8 @@ export function candidateNote(source: FoodProduct, candidate: FoodProduct): stri
     && Math.abs(source.carbs - candidate.carbs) >= 7) {
     return 'Stor forskjell i karbohydrater. Kontroller variant og næringsverdier.';
   }
-  if (!candidate.ingredients) return 'Ingredienslisten bør kontrolleres på emballasjen.';
+  // Missing ingredient data in a search hit is common; explain that once in the
+  // results footer rather than clutter every candidate card.
   return null;
 }
 
