@@ -70,3 +70,11 @@ test('clear conflicts are included without replacing displayed source values',()
  assert.match(data.issues.join(' '),/kcal og kJ/);
  assert.match(data.summaryNotice,/motstridende/);
 });
+
+test('impossible nutrient mass per 100 g is treated as a source inconsistency',()=>{
+ const data=productDataStatus({...base,sugar:125,carbs:130});
+ assert.equal(data.issues.length,2);
+ assert.ok(data.issues.some(x=>/sukkerarter overstiger 100 g/.test(x)));
+ assert.ok(data.issues.some(x=>/karbohydrater overstiger 100 g/.test(x)));
+ assert.match(data.summaryNotice,/motstridende/);
+});
