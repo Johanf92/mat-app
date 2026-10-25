@@ -108,11 +108,18 @@ export async function getProduct(barcode: string, signal?: AbortSignal): Promise
   return data.status === 1 ? normalize({ ...record(data.product), code: record(data.product).code ?? barcode }) : null;
 }
 
-export async function searchByCategory(category:string,market:Market=DEFAULT_MARKET,signal?:AbortSignal):Promise<FoodProduct[]>{
- if(!/^en:[a-z0-9-]+$/.test(category))return [];
- const params=new URLSearchParams({categories_tags:category,fields:FIELDS,page_size:'30',page:'1'});
- if(market.tag)params.set('countries_tags',market.tag);
- const data=record(await getJson(BASE+'/api/v2/search?'+params.toString(),'search',signal));
- const products=(Array.isArray(data.products)?data.products:[]).map(normalize).filter((p):p is FoodProduct=>p!==null);
- return [...new Map(products.filter(p=>p.categories.includes(category)&&(!market.tag||p.countries.includes(market.tag))).map(p=>[p.code,p])).values()];
+export function buildCategoryUrl(category: string, market: Market = DEFAULT_MARKET): string {
+ const params = new URLSearchParams({
+  categories_tags: category, fields: FIELDS, page_size: '60', page: '1', sort_by: 'popularity_key'
+ });
+ // The v2 structured search reference documents countries_tags_en.
+ if (market.tag) params.set('countries_tags_en', market.tag.replace(/^en:/, ''));
+ return BASE + '/api/v2/search?' + params.toString();
+}
+export async function searchByCategory(category: string, market: Market = DEFAULT_MARKET, signal?: AbortSignal): Promise<FoodProduct[]> {
+ if (!/^en:[a-z0-9-]+$/.test(category)) return [];
+ const data = record(await getJson(buildCategoryUrl(category, market), 'search', signal));
+ const products = (Array.isArray(data.products) ? data.products : []).map(normalize).filter((p): p is FoodProduct => p !== null);
+ // Never silently widen the selected market if the upstream filter is ignored.
+ return [...new Map(products.filter(p => p.categories.includes(category) && (!market.tag || p.countries.includes(market.tag))).map(p => [p.code, p])).values()];
 }
