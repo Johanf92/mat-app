@@ -128,3 +128,17 @@ test('identical-barcode grocery hits do not leak values between different source
  assert.equal(chosen.protein,1);
  assert.equal(chosen.salt,null,'never invent or merge missing value');
 });
+
+test('duplicate barcodes prefer plausible source values over impossible mass claims',()=>{
+ const code='9800000000099';
+ const impossible={code,countries_tags:norway,product_name_no:'Testmat',
+  ingredients_text_no:'Melk',nutriments:{proteins_100g:3,fat_100g:3,
+    carbohydrates_100g:130,sugars_100g:120,salt_100g:0.1}};
+ const plausible={code,countries_tags:norway,product_name_no:'Testmat',
+  ingredients_text_no:'Melk',nutriments:{proteins_100g:3,fat_100g:3,
+    carbohydrates_100g:5,sugars_100g:4}};
+ const [chosen]=searchResults({hits:[impossible,plausible]},{code:'no',name:'Norge',tag:'en:norway'});
+ assert.equal(chosen.carbs,5);
+ assert.equal(chosen.sugar,4);
+ assert.equal(productDataStatus(normalize(impossible)).issues.length,2);
+});
