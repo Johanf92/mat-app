@@ -34,8 +34,8 @@ export default function ProductScreen() {
   const [alternativesError,setAlternativesError]=useState('');
   const [alternativesRequested,setAlternativesRequested]=useState(false);
   async function loadAlternatives(){
-    if(!product||alternativesLoading)return;
-    setAlternativesLoading(true);setAlternativesRequested(true);setAlternativesError('');
+    if(!product||alternativesLoading||!comparableCategory(product))return;
+    setAlternativesLoading(true);setAlternativesRequested(true);setAlternativesError('');setAlternatives([]);
     try{setAlternatives(await findAlternatives(product,market));}
     catch{setAlternativesError('Kunne ikke hente alternativer akkurat nå.');}
     finally{setAlternativesLoading(false);}
@@ -52,6 +52,7 @@ export default function ProductScreen() {
   }, [id, retry]);
   const p = product;
   const nova = novaInfo(p?.nova ?? null);
+  const alternativesSupported = p !== null && comparableCategory(p) !== null;
   // The heading, cards and raw-data disclosure share the same presentation model.
   const additives = summarizeAdditives(p?.additives ?? []);
   const titles: Record<Exclude<Topic, null>, string> = { nova: 'Hva betyr NOVA?', ingredients: 'Om ingredienslisten', nutrition: 'Slik leser du næringsinnhold', additives: 'Om tilsetningsstoffer' };
@@ -75,6 +76,27 @@ export default function ProductScreen() {
         <Text style={styles.caption}>Per 100 g / 100 ml, slik datakilden oppgir verdiene.</Text>
         <View style={styles.macros}>{([['Protein', p.protein], ['Fett', p.fat], ['Karbohydrat', p.carbs]] as const).map(([label, value]) => <View key={label} style={styles.macro}><Text style={styles.caption}>{label}</Text><Text style={styles.macroValue}>{value === null ? '—' : amount(value)}</Text></View>)}</View>
         {[p.protein, p.fat, p.carbs].some(x => x === null) && <Text style={styles.caption}>— betyr at opplysningen mangler, ikke at mengden er null.</Text>}
+        <View testID="product-alternatives" style={styles.alternatives}>
+          <Text accessibilityRole="header" style={styles.section}>Alternativer i Matkontroll</Text>
+          <Text style={styles.caption}>Søk blant produkter registrert {market.tag ? 'for ' + market.name : 'i alle land'}. Resultatene vises her i appen.</Text>
+          <Pressable testID="find-alternatives" accessibilityRole="button" accessibilityLabel="Finn alternativer i Matkontroll"
+            accessibilityHint="Søker og viser treff på denne siden, uten å åpne nettleseren."
+            accessibilityState={{ disabled: !alternativesSupported || alternativesLoading, busy: alternativesLoading }}
+            style={[styles.altButton, (!alternativesSupported || alternativesLoading) && styles.altButtonDisabled]}
+            onPress={() => { void loadAlternatives(); }} disabled={!alternativesSupported || alternativesLoading}>
+            <Text style={styles.altButtonText}>{alternativesLoading ? 'Henter alternativer…' : alternativesRequested ? 'Søk etter alternativer igjen' : 'Finn alternativer i Matkontroll'}</Text>
+          </Pressable>
+          {!alternativesSupported && <Text style={styles.caption}>Alternativsøk er ikke tilgjengelig for denne varen ennå. Produktkategorien mangler eller støttes ikke av søket vårt.</Text>}
+          {alternativesLoading && <ActivityIndicator accessibilityLabel="Henter alternativer" color={colors.green} />}
+          {!!alternativesError && <Text accessibilityRole="alert" style={styles.warning}>{alternativesError}</Text>}
+          {alternativesRequested && !alternativesLoading && !alternativesError && alternatives.length === 0 && <Text style={styles.caption}>Ingen relevante alternativer med tilstrekkelige data ble funnet.</Text>}
+          {!alternativesLoading && !alternativesError && alternatives.map(other => <Pressable accessibilityRole="button" key={other.code} onPress={() => router.push({ pathname: '/product/[id]', params: { id: other.code } })} style={styles.altRow}>
+            {other.image ? <Image source={{ uri: other.image }} style={styles.altImage} resizeMode="contain" /> : <View style={styles.altImage} />}
+            <View style={{ flex: 1, gap: 4 }}><Text style={styles.additiveName}>{other.name}</Text><Text style={styles.caption}>{other.brand}</Text>
+            <Text style={styles.caption}>Protein {amount(other.protein)} · Fett {amount(other.fat)} · Karbohydrat {amount(other.carbs)}</Text><NovaBadge group={other.nova} compact /></View><Text style={styles.arrow}>›</Text>
+          </Pressable>)}
+          <Text style={styles.caption}>Samme registrerte kategori er bare et utgangspunkt. Kontroller bruksområde og innhold; treffene er ikke automatisk bedre eller tilgjengelige i butikk.</Text>
+        </View>
         <View style={styles.accordions}>
           <Accordion key={p.code + '-ingredients'} title="Ingredienser">
             <Text style={styles.caption}>{['no', 'nb'].includes(p.ingredientLanguage) ? 'Tekst registrert i norsk språkfelt.' : 'Tekst fra datakilden. Kan inneholde flere språk; ikke automatisk oversatt.'}</Text>
@@ -108,25 +130,12 @@ export default function ProductScreen() {
             <Text style={styles.caption}>Strekkode: {p.code}</Text>
             {!!additives.rawTags.length && <Text selectable style={styles.caption}>Originale tilsetningsstoffkoder: {additives.rawTags.join(', ')}</Text>}
             {p.modifiedAt !== null && p.modifiedAt > 0 && <Text style={styles.caption}>Sist endret hos kilden: {new Date(p.modifiedAt * 1000).toLocaleDateString('nb-NO')}. Dette er ikke en kvalitetsgodkjenning.</Text>}
-            <SourceLink label="Se eller foreslå rettelser hos Open Food Facts" url={'https://world.openfoodfacts.org/product/' + p.code} />
+            <Text style={styles.caption}>Ekstern kildeside, ikke alternativsøket i Matkontroll.</Text>
+            <SourceLink label="Åpne originalproduktet i nettleseren" url={'https://world.openfoodfacts.org/product/' + p.code} />
           </Accordion>
         </View>
-        <View style={styles.alternatives}>
-          <Text style={styles.section}>Se lignende produkter</Text>
-          <Text style={styles.caption}>Vi leter etter samme registrerte produktkategori i {market.name}. Forslagene er ikke automatisk bedre eller tilgjengelige i butikk.</Text>
-          {comparableCategory(p) ? <Pressable accessibilityRole="button" style={styles.altButton} onPress={() => { void loadAlternatives(); }} disabled={alternativesLoading}>
-            <Text style={styles.altButtonText}>{alternativesLoading ? 'Henter alternativer…' : alternativesRequested ? 'Søk på nytt' : 'Finn alternativer'}</Text>
-          </Pressable> : <Text style={styles.caption}>Produktkategorien er ikke spesifikk nok til en relevant sammenligning ennå.</Text>}
-          {!!alternativesError && <Text style={styles.warning}>{alternativesError}</Text>}
-          {alternativesRequested && !alternativesLoading && !alternativesError && alternatives.length === 0 && <Text style={styles.caption}>Ingen relevante alternativer med tilstrekkelige data ble funnet.</Text>}
-          {alternatives.map(other => <Pressable accessibilityRole="button" key={other.code} onPress={() => router.push({ pathname: '/product/[id]', params: { id: other.code } })} style={styles.altRow}>
-            {other.image ? <Image source={{ uri: other.image }} style={styles.altImage} /> : <View style={styles.altImage} />}
-            <View style={{ flex: 1, gap: 4 }}><Text style={styles.additiveName}>{other.name}</Text><Text style={styles.caption}>{other.brand}</Text>
-            <Text style={styles.caption}>Protein {amount(other.protein)} · Fett {amount(other.fat)} · Karbohydrat {amount(other.carbs)}</Text><NovaBadge group={other.nova} compact /></View><Text style={styles.arrow}>›</Text>
-          </Pressable>)}
-        </View>
         <Text style={styles.caption}>Velg selv. Vi viser innhold og bearbeiding, ikke en fasit på hva du skal spise.</Text>
-        <SourceLink label="Kilde: Open Food Facts" url={'https://world.openfoodfacts.org/product/' + p.code} />
+        <Text style={styles.caption}>Produktdata og bilder: Open Food Facts. Kildelenken ligger under «Kilde og datakvalitet».</Text>
       </>}
     </ScrollView>
     <InfoSheet visible={selectedAdditive !== null} title={selectedAdditive ? formatAdditiveCode(selectedAdditive.id) + ' · ' + selectedAdditive.name : ''} onClose={() => setSelectedAdditive(null)}>
@@ -173,7 +182,7 @@ const styles = StyleSheet.create({
   nutrientValue: { fontSize: 15, lineHeight: 23, color: colors.ink, fontWeight: '600' }, warning: { fontSize: 13, lineHeight: 21, color: '#825617' },
   additiveRow: { flexDirection: 'row', gap: 12, alignItems: 'center', padding: 13, borderWidth: 1, borderColor: colors.line, borderRadius: 12, backgroundColor: 'white' },
   additiveName: { fontSize: 15, fontWeight: '700', color: colors.ink },
-  alternatives: { gap: 13, marginTop: 10 }, altButton: { backgroundColor: colors.green, padding: 15, borderRadius: 12, alignItems: 'center' }, altButtonText: { fontSize: 15, fontWeight: '700', color: 'white' },
+  alternatives: { gap: 12, marginTop: 4, padding: 16, borderWidth: 1, borderColor: colors.line, borderRadius: 16, backgroundColor: '#F0F5EF' }, altButtonDisabled: { opacity: 0.5 }, altButton: { backgroundColor: colors.green, padding: 15, borderRadius: 12, alignItems: 'center' }, altButtonText: { fontSize: 15, fontWeight: '700', color: 'white' },
   altRow: { flexDirection: 'row', gap: 12, alignItems: 'center', padding: 12, borderWidth: 1, borderColor: colors.line, borderRadius: 14, backgroundColor: 'white' },
   altImage: { width: 58, height: 70, backgroundColor: '#EBF1EB', borderRadius: 9 },
   novaExplanation: { padding: 13, borderRadius: 12, gap: 4 }, explanationTitle: { fontSize: 15, fontWeight: '800' },
