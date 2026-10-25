@@ -7,7 +7,7 @@ import { type Market } from './catalog';
  */
 export type ProductKind =
   | 'oat-barista' | 'oat-drink' | 'greek-plain' | 'plain-yogurt'
-  | 'cola-regular' | 'cola-sugar-free';
+  | 'cola-regular' | 'cola-sugar-free' | 'kefir-plain';
 export type MatchProfile = {
   kind: ProductKind;
   label: string;
@@ -85,6 +85,18 @@ function colaProfile(p: FoodProduct): MatchProfile | null {
   };
 }
 
+function kefirProfile(p: FoodProduct): MatchProfile | null {
+  const name = fold(p.name);
+  const categorization = textOf(p);
+  if (!/\bkefir\b/.test(name)) return null;
+  // Water kefir and fruit-flavoured products are different types of drinks.
+  if (/vannkefir|water[\s-]*kefir|kefir[\s-]*water|vann[\s-]*kefir/.test(categorization)
+      || hasFlavourLabel(p)
+      || /\b(sukker|sugar|sirup|syrup|honning|honey|frukt|fruit|juice|saft)\b/.test(fold(p.ingredients ?? ''))) return null;
+  return { kind: 'kefir-plain', label: 'naturell kefir',
+    category: 'en:kefirs', fallback: 'kefir' };
+}
+
 /**
  * Conservative, explainable product profiles. Do not classify a yoghurt as
  * "naturell" solely because the title contains "gresk yoghurt".
@@ -92,6 +104,8 @@ function colaProfile(p: FoodProduct): MatchProfile | null {
 export function productProfile(p: FoodProduct): MatchProfile | null {
   const cola = colaProfile(p);
   if (cola) return cola;
+  const kefir = kefirProfile(p);
+  if (kefir) return kefir;
 
   if (isOatBased(p) && isDrink(p)) {
     if (isBarista(p) && !hasFlavourLabel(p)) return {
@@ -167,7 +181,7 @@ function variantKey(p: FoodProduct, kind: ProductKind): string {
       : /\bmax\b/.test(name) ? 'max' : 'unspecified';
     return kind + '|' + brand + '|' + variant;
   }
-  if (kind === 'greek-plain' || kind === 'plain-yogurt') {
+  if (kind === 'greek-plain' || kind === 'plain-yogurt' || kind === 'kefir-plain') {
     const metrics = [p.energy, p.protein, p.fat, p.carbs, p.sugar];
     if (metrics.filter(v => v !== null).length < 3) return identity(p);
     return kind + '|' + brand + '|' + (labeledLactoseFree(p) ? 'lactose-free' : 'unspecified')
@@ -190,6 +204,7 @@ function quality(p: FoodProduct): number {
 }
 function exactLabelMatch(p: FoodProduct, kind: ProductKind): number {
   if (kind === 'greek-plain' || kind === 'plain-yogurt') return explicitlyPlain(p) ? 2 : 0;
+  if (kind === 'kefir-plain') return /\b(naturell|plain|natural)\b/.test(textOf(p)) ? 2 : 0;
   if (kind === 'cola-regular') return /\b(original|classic|klassisk)\b/.test(textOf(p)) ? 1 : 0;
   if (kind === 'cola-sugar-free') return /\b(zero|sukkerfri|sugar free)\b/.test(textOf(p)) ? 1 : 0;
   return 0;
@@ -224,7 +239,7 @@ export function relevantAlternatives(source: FoodProduct, options: FoodProduct[]
 export function candidateNote(source: FoodProduct, candidate: FoodProduct): string | null {
   const a = productProfile(source), b = productProfile(candidate);
   if (!a || !b || a.kind !== b.kind) return null;
-  if (a.kind === 'greek-plain' || a.kind === 'plain-yogurt') {
+  if (a.kind === 'greek-plain' || a.kind === 'plain-yogurt' || a.kind === 'kefir-plain') {
     if (labeledLactoseFree(source) && !labeledLactoseFree(candidate))
       return 'Denne varianten er ikke registrert som laktosefri. Kontroller emballasjen før du vurderer den som erstatning. Laktosefri betyr ikke melkefri.';
     if (!labeledLactoseFree(source) && labeledLactoseFree(candidate))
