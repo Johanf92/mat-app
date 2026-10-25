@@ -16,7 +16,7 @@ function descriptiveText(p: FoodProduct): string {
 function isOatBased(p: FoodProduct): boolean {
   const text = descriptiveText(p);
   const ingredients = fold(p.ingredients ?? '');
-  return /\b(oat|oats|havre|hafer|avena)(?:\b|s)/.test(text + ' ' + ingredients)
+  return /\b(oat|havre|hafer|avena)[a-z]*/.test(text + ' ' + ingredients)
     || (/oatly/.test(fold(p.brand)) && /ikaffe|oat|barista|kaffe/.test(text));
 }
 function isYogurt(p: FoodProduct): boolean {
