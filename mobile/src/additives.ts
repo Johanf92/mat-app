@@ -1,25 +1,84 @@
-// Curated, neutral Norwegian explanations. Not medical safety ratings.
-export type AdditiveInfo={id:string;name:string;role:string;description:string;source:string};
-const SOURCE='https://www.mattilsynet.no/mat-og-drikke/tilsetningsstoffer';
-const entries:Record<string,Omit<AdditiveInfo,'id'|'source'>>={
- 'E150D':{name:'Ammoniumsulfittkaramell',role:'Fargestoff',description:'Gir produkter en brun farge.'},
- 'E290':{name:'Karbondioksid',role:'Gass',description:'Brukes blant annet til å gi drikker kullsyre.'},
- 'E338':{name:'Fosforsyre',role:'Surhetsregulerende middel',description:'Brukes til å regulere surhetsgrad og bidra til syrlig smak.'},
- 'E340':{name:'Kaliumfosfater',role:'Surhetsregulerende middel',description:'Samlebetegnelse for kaliumfosfater. Ulike varianter har egne undernumre.'},
- 'E340II':{name:'Dikaliumfosfat',role:'Surhetsregulerende middel',description:'En bestemt variant i E340-familien. Kan brukes til å regulere surhetsgraden.'}
+// Small explanatory catalogue, not a safety ranking or a complete additive database.
+export type AdditiveInfo = {
+  id: string; name: string; role: string; description: string; source: string;
 };
-export function normalizeAdditive(value:string):string|null {
- const match=value.toUpperCase().replace(/^[A-Z]{2}:/,'').replace(/[^A-Z0-9]/g,'').match(/^E(\d{3,4})([IVX]{1,4})?$/);
- return match?'E'+match[1]+(match[2]||''):null;
+export const ADDITIVE_GENERAL_SOURCE = 'https://www.efsa.europa.eu/en/topics/topic/food-additives';
+const NAMES_SOURCE = 'https://www.gov.uk/government/publications/approved-additives-and-e-numbers/approved-additives-and-e-numbers';
+const entries: Record<string, Omit<AdditiveInfo, 'id' | 'source'>> = {
+  E150D: { name: 'Ammoniumsulfittkaramell', role: 'Fargestoff', description: 'Gir produkter en brun farge.' },
+  E290: { name: 'Karbondioksid', role: 'Gass', description: 'Brukes blant annet til å gi drikker kullsyre.' },
+  E338: { name: 'Fosforsyre', role: 'Surhetsregulerende middel', description: 'Kan brukes til å regulere surhetsgraden.' },
+  E340: { name: 'Kaliumfosfater', role: 'Surhetsregulerende middel', description: 'Samlebetegnelse for kaliumfosfater. Ulike varianter har egne undernumre.' },
+  E340II: { name: 'Dikaliumfosfat', role: 'Surhetsregulerende middel', description: 'En variant i E340-familien. Kan brukes til å regulere surhetsgraden.' },
+};
+// Explicit relationships only. A shared numeric prefix is not enough to merge records.
+const FAMILIES: Readonly<Record<string, readonly string[]>> = {
+  E340: ['E340I', 'E340II', 'E340III'],
+};
+const ROMAN = /^(?:I|II|III|IV|V|VI|VII|VIII|IX|X)$/;
+type CodeParts = { number: string; letter: string; variant: string };
+function parseCode(value: string): CodeParts | null {
+  const text = value.trim().replace(/^[a-z]{2,3}:/i, '').replace(/\s/g, '').toUpperCase();
+  const match = /^E(\d{3,4})(.*)$/.exec(text);
+  if (!match) return null;
+  const suffix = match[2];
+  if (!suffix) return { number: match[1], letter: '', variant: '' };
+  if (ROMAN.test(suffix)) return { number: match[1], letter: '', variant: suffix };
+  const wrapped = /^\(([IVX]+)\)$/.exec(suffix);
+  if (wrapped && ROMAN.test(wrapped[1])) return { number: match[1], letter: '', variant: wrapped[1] };
+  const withLetter = /^([A-Z])(?:([IVX]+)|\(([IVX]+)\))?$/.exec(suffix);
+  if (!withLetter) return null;
+  const variant = withLetter[2] || withLetter[3] || '';
+  if (variant && !ROMAN.test(variant)) return null;
+  return { number: match[1], letter: withLetter[1], variant };
 }
-export function additiveInfo(raw:string):AdditiveInfo|null {
- const id=normalizeAdditive(raw);if(!id)return null;
- const entry=entries[id];
- return entry?{id,...entry,source:SOURCE}:{id,name:'Forklaring ikke tilgjengelig',role:'Ukjent funksjon',description:'Vi har ikke en kontrollert forklaring for dette nummeret ennå. Et E-nummer betyr ikke i seg selv at stoffet er skadelig.',source:SOURCE};
+// Recognising the spelling does not assert that a code is authorised or safe.
+export function normalizeAdditive(value: string): string | null {
+  const parts = parseCode(value);
+  return parts ? 'E' + parts.number + parts.letter + parts.variant : null;
 }
-export function groupAdditives(values:string[]):AdditiveInfo[]{
- const items=values.map(additiveInfo).filter((x):x is AdditiveInfo=>x!==null);
- const unique=[...new Map(items.map(x=>[x.id,x])).values()];
- // If an exact subtype is present, avoid also counting its family heading as a separate additive.
- return unique.filter(x=>!unique.some(other=>other.id!==x.id&&other.id.startsWith(x.id)&&/^E\d+$/.test(x.id)));
+export function formatAdditiveCode(value: string): string {
+  const parts = parseCode(value);
+  if (!parts) return value;
+  return 'E' + parts.number + parts.letter.toLowerCase() + (parts.variant ? '(' + parts.variant.toLowerCase() + ')' : '');
+}
+export function additiveInfo(raw: string): AdditiveInfo | null {
+  const id = normalizeAdditive(raw);
+  if (!id) return null;
+  const entry = entries[id];
+  return entry ? { id, ...entry, source: NAMES_SOURCE } : {
+    id, name: 'Forklaring mangler', role: 'Funksjon ikke avklart',
+    description: 'Koden er registrert i datakilden, men vi har ikke en forklaring for dette nummeret ennå. Vi gjetter ikke på funksjonen.',
+    source: ADDITIVE_GENERAL_SOURCE,
+  };
+}
+export type AdditiveSummary = {
+  items: AdditiveInfo[]; unrecognized: string[]; rawTags: string[];
+  groupedParents: string[]; title: string; groupingNote: string | null;
+};
+export function summarizeAdditives(values: readonly string[]): AdditiveSummary {
+  const rawTags = [...new Set(values.map(value => value.trim()).filter(Boolean))];
+  const recognized = new Map<string, AdditiveInfo>();
+  const unrecognized: string[] = [];
+  for (const raw of rawTags) {
+    const item = additiveInfo(raw);
+    if (item) recognized.set(item.id, item);
+    else unrecognized.push(raw); // Keep unfamiliar formats visible, never silently discard them.
+  }
+  const groupedParents = Object.keys(FAMILIES).filter(parent =>
+    recognized.has(parent) && FAMILIES[parent].some(child => recognized.has(child)));
+  const items = [...recognized.values()].filter(item => !groupedParents.includes(item.id));
+  const count = items.length + unrecognized.length;
+  const groupingNote = groupedParents.length ? groupedParents.map(parent => {
+    const variants = FAMILIES[parent].filter(child => recognized.has(child)).map(formatAdditiveCode).join(', ');
+    return formatAdditiveCode(parent) + ' er en samlegruppe og vises her gjennom ' + variants + ', ikke som et ekstra stoff.';
+  }).join(' ') : null;
+  return {
+    items, unrecognized, rawTags, groupedParents, groupingNote,
+    title: 'Tilsetningsstoffer' + (count ? ' · ' + count + (count === 1 ? ' oppføring' : ' oppføringer') : ''),
+  };
+}
+// Retain the public helper for callers; use summarizeAdditives in UI to retain unknown raw tags.
+export function groupAdditives(values: readonly string[]): AdditiveInfo[] {
+  return summarizeAdditives(values).items;
 }

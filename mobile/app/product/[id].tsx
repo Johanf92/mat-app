@@ -6,7 +6,7 @@ import { type FoodProduct, getProduct } from '../../src/openFoodFacts';
 import { amount, NOVA, novaInfo, type NovaGroup } from '../../src/catalog';
 import { useMarket } from '../../src/MarketContext';
 import { colors, InfoSheet, SourceLink, NovaBadge } from '../../src/ui';
-import { additiveInfo, groupAdditives, type AdditiveInfo } from '../../src/additives';
+import { ADDITIVE_GENERAL_SOURCE, formatAdditiveCode, summarizeAdditives, type AdditiveInfo } from '../../src/additives';
 import { comparableCategory, findAlternatives } from '../../src/alternatives';
 
 type Topic = 'nova' | 'ingredients' | 'nutrition' | 'additives' | null;
@@ -52,6 +52,8 @@ export default function ProductScreen() {
   }, [id, retry]);
   const p = product;
   const nova = novaInfo(p?.nova ?? null);
+  // The heading, cards and raw-data disclosure share the same presentation model.
+  const additives = summarizeAdditives(p?.additives ?? []);
   const titles: Record<Exclude<Topic, null>, string> = { nova: 'Hva betyr NOVA?', ingredients: 'Om ingredienslisten', nutrition: 'Slik leser du næringsinnhold', additives: 'Om tilsetningsstoffer' };
   return <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
     <View style={styles.toolbar}><Pressable accessibilityRole="button" onPress={() => router.canGoBack() ? router.back() : router.replace('/')} style={styles.backButton}><Text style={styles.back}>← Tilbake til søk</Text></Pressable></View>
@@ -84,12 +86,16 @@ export default function ProductScreen() {
             <Text style={styles.caption}>Per 100 g / 100 ml. Ingen porsjoner er beregnet.</Text>
             {([['Energi', p.energy, 'kcal'], ['Protein', p.protein, 'g'], ['Fett', p.fat, 'g'], ['Karbohydrat', p.carbs, 'g'], ['Hvorav sukkerarter', p.sugar, 'g'], ['Fiber', p.fiber, 'g'], ['Salt', p.salt, 'g']] as const).map(([label, value, unit]) => <View key={label} style={styles.nutrientRow}><Text style={styles.body}>{label}</Text><Text style={styles.nutrientValue}>{amount(value, unit)}</Text></View>)}
           </Accordion>
-          <Accordion key={p.code + '-additives'} title={'Tilsetningsstoffer' + (p.additives.length ? ' · ' + p.additives.length + ' registrert' : '')}>
-            <Text style={styles.caption}>{groupAdditives(p.additives).length ? groupAdditives(p.additives).length + ' forskjellige oppføringer, etter sammenslåing av overordnede E-numre og undervarianter.' : 'Ingen opplysninger registrert.'}</Text>
-            {groupAdditives(p.additives).map(a => <Pressable key={a.id} accessibilityRole="button" onPress={()=>setSelectedAdditive(a)} style={styles.additiveRow}>
-              <View style={{flex:1,gap:3}}><Text style={styles.additiveName}>{a.id} · {a.name}</Text><Text style={styles.caption}>{a.role}</Text></View><Text style={styles.arrow}>ⓘ</Text>
+          <Accordion key={p.code + '-additives'} title={additives.title}>
+            {additives.rawTags.length === 0 && <Text style={styles.body}>Ingen opplysninger registrert. Dette bekrefter ikke at produktet er uten tilsetningsstoffer.</Text>}
+            {!!additives.groupingNote && <Text style={styles.caption}>{additives.groupingNote}</Text>}
+            {additives.items.map(a => <Pressable key={a.id} accessibilityRole="button" accessibilityLabel={'Les om ' + formatAdditiveCode(a.id) + ', ' + a.name} onPress={() => setSelectedAdditive(a)} style={styles.additiveRow}>
+              <View style={{ flex: 1, gap: 3 }}><Text style={styles.additiveName}>{formatAdditiveCode(a.id)} · {a.name}</Text><Text style={styles.caption}>{a.role}</Text></View><Text style={styles.arrow}>ⓘ</Text>
             </Pressable>)}
-            <Text style={styles.caption}>Dette er registrerte opplysninger, ikke en fullstendig kontroll av innholdet.</Text>
+            {additives.unrecognized.map(raw => <View key={raw} style={styles.additiveRow}>
+              <View style={{ flex: 1, gap: 3 }}><Text style={styles.additiveName}>{raw}</Text><Text style={styles.caption}>Ukjent kodeformat fra datakilden. Oppføringen er beholdt, men ikke tolket.</Text></View>
+            </View>)}
+            <Text style={styles.caption}>Registreringene kan være ufullstendige. Originalkodene er tilgjengelige under «Kilde og datakvalitet».</Text>
             <Pressable accessibilityRole="button" onPress={() => setTopic('additives')} style={styles.infoButton}><Text style={styles.info}>Hva betyr E-numrene? ⓘ</Text></Pressable>
           </Accordion>
           <Accordion key={p.code + '-allergens'} title="Allergenopplysninger">
@@ -100,6 +106,7 @@ export default function ProductScreen() {
             <Text style={styles.body}>Dataene kommer fra Open Food Facts og kan være feil eller ufullstendige.</Text>
             <Text style={styles.body}>{market.tag === null ? 'Du søker i alle land.' : p.countries.includes(market.tag) ? 'Registrert for ' + market.name + '. Dette er ikke en lagerstatus.' : 'Ikke registrert for ' + market.name + ' i dataene vi har. Varen kan likevel finnes der.'}</Text>
             <Text style={styles.caption}>Strekkode: {p.code}</Text>
+            {!!additives.rawTags.length && <Text selectable style={styles.caption}>Originale tilsetningsstoffkoder: {additives.rawTags.join(', ')}</Text>}
             {p.modifiedAt !== null && p.modifiedAt > 0 && <Text style={styles.caption}>Sist endret hos kilden: {new Date(p.modifiedAt * 1000).toLocaleDateString('nb-NO')}. Dette er ikke en kvalitetsgodkjenning.</Text>}
             <SourceLink label="Se eller foreslå rettelser hos Open Food Facts" url={'https://world.openfoodfacts.org/product/' + p.code} />
           </Accordion>
@@ -107,24 +114,25 @@ export default function ProductScreen() {
         <View style={styles.alternatives}>
           <Text style={styles.section}>Se lignende produkter</Text>
           <Text style={styles.caption}>Vi leter etter samme registrerte produktkategori i {market.name}. Forslagene er ikke automatisk bedre eller tilgjengelige i butikk.</Text>
-          {comparableCategory(p) ? <Pressable accessibilityRole="button" style={styles.altButton} onPress={()=>{void loadAlternatives();}} disabled={alternativesLoading}>
-            <Text style={styles.altButtonText}>{alternativesLoading?'Henter alternativer…':alternativesRequested?'Søk på nytt':'Finn alternativer'}</Text>
+          {comparableCategory(p) ? <Pressable accessibilityRole="button" style={styles.altButton} onPress={() => { void loadAlternatives(); }} disabled={alternativesLoading}>
+            <Text style={styles.altButtonText}>{alternativesLoading ? 'Henter alternativer…' : alternativesRequested ? 'Søk på nytt' : 'Finn alternativer'}</Text>
           </Pressable> : <Text style={styles.caption}>Produktkategorien er ikke spesifikk nok til en relevant sammenligning ennå.</Text>}
-          {!!alternativesError&&<Text style={styles.warning}>{alternativesError}</Text>}
-          {alternativesRequested&&!alternativesLoading&&!alternativesError&&alternatives.length===0&&<Text style={styles.caption}>Ingen relevante alternativer med tilstrekkelige data ble funnet.</Text>}
-          {alternatives.map(other=><Pressable accessibilityRole="button" key={other.code} onPress={()=>router.push({pathname:'/product/[id]',params:{id:other.code}})} style={styles.altRow}>
-            {other.image?<Image source={{uri:other.image}} style={styles.altImage}/>:<View style={styles.altImage}/>}
-            <View style={{flex:1,gap:4}}><Text style={styles.additiveName}>{other.name}</Text><Text style={styles.caption}>{other.brand}</Text>
-            <Text style={styles.caption}>Protein {amount(other.protein)} · Fett {amount(other.fat)} · Karbohydrat {amount(other.carbs)}</Text><NovaBadge group={other.nova} compact/></View><Text style={styles.arrow}>›</Text>
+          {!!alternativesError && <Text style={styles.warning}>{alternativesError}</Text>}
+          {alternativesRequested && !alternativesLoading && !alternativesError && alternatives.length === 0 && <Text style={styles.caption}>Ingen relevante alternativer med tilstrekkelige data ble funnet.</Text>}
+          {alternatives.map(other => <Pressable accessibilityRole="button" key={other.code} onPress={() => router.push({ pathname: '/product/[id]', params: { id: other.code } })} style={styles.altRow}>
+            {other.image ? <Image source={{ uri: other.image }} style={styles.altImage} /> : <View style={styles.altImage} />}
+            <View style={{ flex: 1, gap: 4 }}><Text style={styles.additiveName}>{other.name}</Text><Text style={styles.caption}>{other.brand}</Text>
+            <Text style={styles.caption}>Protein {amount(other.protein)} · Fett {amount(other.fat)} · Karbohydrat {amount(other.carbs)}</Text><NovaBadge group={other.nova} compact /></View><Text style={styles.arrow}>›</Text>
           </Pressable>)}
         </View>
         <Text style={styles.caption}>Velg selv. Vi viser innhold og bearbeiding, ikke en fasit på hva du skal spise.</Text>
         <SourceLink label="Kilde: Open Food Facts" url={'https://world.openfoodfacts.org/product/' + p.code} />
       </>}
     </ScrollView>
-    <InfoSheet visible={selectedAdditive!==null} title={selectedAdditive?selectedAdditive.id+' · '+selectedAdditive.name:''} onClose={()=>setSelectedAdditive(null)}>
-      <Text style={styles.body}>{selectedAdditive?.description}</Text><Text style={styles.caption}>Funksjon: {selectedAdditive?.role}. Dette er en forklaring på bruksområde, ikke en individuell sikkerhetsvurdering.</Text>
-      <SourceLink label="Generell informasjon om tilsetningsstoffer hos Mattilsynet" url="https://www.mattilsynet.no/mat-og-drikke/tilsetningsstoffer"/>
+    <InfoSheet visible={selectedAdditive !== null} title={selectedAdditive ? formatAdditiveCode(selectedAdditive.id) + ' · ' + selectedAdditive.name : ''} onClose={() => setSelectedAdditive(null)}>
+      <Text style={styles.body}>{selectedAdditive?.description}</Text>
+      <Text style={styles.caption}>Mulig funksjon: {selectedAdditive?.role}. Den konkrete funksjonen i produktet må bekreftes i ingredienslisten. Dette er ikke en individuell sikkerhetsvurdering.</Text>
+      {!!selectedAdditive && <SourceLink label={selectedAdditive.source === ADDITIVE_GENERAL_SOURCE ? 'Generell informasjon om tilsetningsstoffer (EFSA)' : 'E-numre og stoffnavn (Food Standards Agency)'} url={selectedAdditive.source} />}
     </InfoSheet>
     <InfoSheet visible={topic !== null} title={topic ? titles[topic] : ''} onClose={() => setTopic(null)}>
       {topic === 'nova' && <>
@@ -137,7 +145,13 @@ export default function ProductScreen() {
       </>}
       {topic === 'nutrition' && <><Text style={styles.body}>Protein, fett og karbohydrat vises separat. Sukkerarter er en del av karbohydratene, ikke noe du skal legge til en gang til.</Text><Text style={styles.body}>Sukkerarter inkluderer naturlig forekommende sukker. Tallet forteller ikke alene hvor mye som er tilsatt. Sammenlign samme type vare og samme målegrunnlag.</Text><Text style={styles.caption}>Målegrunnlaget er ikke alltid entydig i API-et. Derfor viser vi ikke beregnede porsjoner eller automatiske rangeringer ennå.</Text></>}
       {topic === 'ingredients' && <><Text style={styles.body}>Dette er teksten datakilden har registrert, ikke en oppskrift vi har utledet. Vi rydder bare i tegnkoder som &amp;quot; og beholder hele teksten.</Text><Text style={styles.body}>Feilregistrerte lister kan inneholde flere språk eller næringsdeklarasjon. Vi kutter ikke bort innhold automatisk, siden viktige opplysninger kan gå tapt.</Text></>}
-      {topic === 'additives' && <><Text style={styles.body}>Et E-nummer identifiserer et tilsetningsstoff. Koden alene sier ikke hvor mye som er brukt i produktet.</Text><Text style={styles.body}>Vi viser foreløpig kodene fra datakilden. Norske forklaringer for hvert stoff og gruppering etter funksjon kommer i en egen oppdatering, med kilder.</Text><Text style={styles.caption}>Ingen registrerte koder betyr ikke at vi har bekreftet at varen er fri for tilsetningsstoffer.</Text></>}
+      {topic === 'additives' && <>
+        <Text style={styles.body}>Et E-nummer identifiserer et tilsetningsstoff. Koden alene sier ikke hvor mye som er brukt i produktet.</Text>
+        <Text style={styles.body}>Trykk på en oppføring for en kort forklaring. Forklaringsregisteret er foreløpig lite. Ukjente koder beholdes uten at vi gjetter funksjonen.</Text>
+        <Text style={styles.body}>Kjente samlegrupper og undervarianter vises sammen, slik at samme registrering ikke telles to ganger. Antallet gjelder oppføringene vi kan vise, ikke en kontroll av alle stoffene i varen.</Text>
+        <Text style={styles.caption}>Ingen registrerte koder betyr ikke at vi har bekreftet at varen er fri for tilsetningsstoffer.</Text>
+        <SourceLink label="Generell informasjon om tilsetningsstoffer (EFSA)" url={ADDITIVE_GENERAL_SOURCE} />
+      </>}
     </InfoSheet>
   </SafeAreaView>;
 }
@@ -157,10 +171,10 @@ const styles = StyleSheet.create({
   accordionHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 17 }, accordionTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.ink },
   arrow: { fontSize: 24, color: colors.green }, details: { paddingBottom: 17, gap: 12 }, nutrientRow: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 },
   nutrientValue: { fontSize: 15, lineHeight: 23, color: colors.ink, fontWeight: '600' }, warning: { fontSize: 13, lineHeight: 21, color: '#825617' },
-  additiveRow:{flexDirection:'row',gap:12,alignItems:'center',padding:13,borderWidth:1,borderColor:colors.line,borderRadius:12,backgroundColor:'white'},
-  additiveName:{fontSize:15,fontWeight:'700',color:colors.ink},
-  alternatives:{gap:13,marginTop:10},altButton:{backgroundColor:colors.green,padding:15,borderRadius:12,alignItems:'center'},altButtonText:{fontSize:15,fontWeight:'700',color:'white'},
-  altRow:{flexDirection:'row',gap:12,alignItems:'center',padding:12,borderWidth:1,borderColor:colors.line,borderRadius:14,backgroundColor:'white'},
-  altImage:{width:58,height:70,backgroundColor:'#EBF1EB',borderRadius:9},
+  additiveRow: { flexDirection: 'row', gap: 12, alignItems: 'center', padding: 13, borderWidth: 1, borderColor: colors.line, borderRadius: 12, backgroundColor: 'white' },
+  additiveName: { fontSize: 15, fontWeight: '700', color: colors.ink },
+  alternatives: { gap: 13, marginTop: 10 }, altButton: { backgroundColor: colors.green, padding: 15, borderRadius: 12, alignItems: 'center' }, altButtonText: { fontSize: 15, fontWeight: '700', color: 'white' },
+  altRow: { flexDirection: 'row', gap: 12, alignItems: 'center', padding: 12, borderWidth: 1, borderColor: colors.line, borderRadius: 14, backgroundColor: 'white' },
+  altImage: { width: 58, height: 70, backgroundColor: '#EBF1EB', borderRadius: 9 },
   novaExplanation: { padding: 13, borderRadius: 12, gap: 4 }, explanationTitle: { fontSize: 15, fontWeight: '800' },
 });
