@@ -109,12 +109,22 @@ export function relevantAlternatives(source: FoodProduct, options: FoodProduct[]
 export async function findAlternatives(source: FoodProduct, market: Market, signal?: AbortSignal): Promise<FoodProduct[]> {
   const profile = productProfile(source);
   if (!profile) return [];
-  const viaCategory = await searchByCategory(profile.category, market, signal);
-  let candidates = relevantAlternatives(source, viaCategory, market);
+  let viaCategory: FoodProduct[] = [];
+  try {
+    viaCategory = await searchByCategory(profile.category, market, signal);
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    // An unavailable category query must not block the independent text search.
+  }
+  const candidates = relevantAlternatives(source, viaCategory, market);
   if (candidates.length >= 4) return candidates;
-  // OFF category tags are frequently missing. Full-text fallback is still
-  // filtered by exact use-case and country in relevantAlternatives().
-  const viaName = await searchProducts(profile.fallback, market, signal);
-  candidates = relevantAlternatives(source, [...viaCategory, ...viaName], market);
-  return candidates;
+  // Search-a-licious also supports full-text search. Filter results again by
+  // exact use-case and country; never equate search relevance with health.
+  try {
+    const viaName = await searchProducts(profile.fallback, market, signal);
+    return relevantAlternatives(source, [...viaCategory, ...viaName], market);
+  } catch (error) {
+    if (candidates.length) return candidates; // Useful partial results already available.
+    throw error; // Both paths failed or no usable results: be transparent.
+  }
 }
