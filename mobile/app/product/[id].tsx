@@ -5,7 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { type FoodProduct, getProduct } from '../../src/openFoodFacts';
 import { amount, NOVA, novaInfo, type NovaGroup } from '../../src/catalog';
 import { useMarket } from '../../src/MarketContext';
-import { colors, InfoSheet, SourceLink } from '../../src/ui';
+import { colors, InfoSheet, SourceLink, NovaBadge } from '../../src/ui';
+import { additiveInfo, groupAdditives, type AdditiveInfo } from '../../src/additives';
+import { comparableCategory, findAlternatives } from '../../src/alternatives';
 
 type Topic = 'nova' | 'ingredients' | 'nutrition' | 'additives' | null;
 function Accordion({ title, children }: PropsWithChildren<{ title: string }>) {
@@ -26,9 +28,21 @@ export default function ProductScreen() {
   const [retry, setRetry] = useState(0);
   const [topic, setTopic] = useState<Topic>(null);
   const [fullIngredients, setFullIngredients] = useState(false);
+  const [selectedAdditive,setSelectedAdditive]=useState<AdditiveInfo|null>(null);
+  const [alternatives,setAlternatives]=useState<FoodProduct[]>([]);
+  const [alternativesLoading,setAlternativesLoading]=useState(false);
+  const [alternativesError,setAlternativesError]=useState('');
+  const [alternativesRequested,setAlternativesRequested]=useState(false);
+  async function loadAlternatives(){
+    if(!product||alternativesLoading)return;
+    setAlternativesLoading(true);setAlternativesRequested(true);setAlternativesError('');
+    try{setAlternatives(await findAlternatives(product,market));}
+    catch{setAlternativesError('Kunne ikke hente alternativer akkurat nå.');}
+    finally{setAlternativesLoading(false);}
+  }
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true); setProduct(null); setError(''); setFullIngredients(false); setTopic(null);
+    setLoading(true); setProduct(null); setError(''); setFullIngredients(false); setTopic(null); setAlternatives([]); setAlternativesRequested(false); setSelectedAdditive(null);
     getProduct(id ?? '', controller.signal).then(p => {
       if (!controller.signal.aborted) { setProduct(p); if (!p) setError('Produktet finnes ikke i Open Food Facts.'); }
     }).catch(e => {
@@ -71,7 +85,10 @@ export default function ProductScreen() {
             {([['Energi', p.energy, 'kcal'], ['Protein', p.protein, 'g'], ['Fett', p.fat, 'g'], ['Karbohydrat', p.carbs, 'g'], ['Hvorav sukkerarter', p.sugar, 'g'], ['Fiber', p.fiber, 'g'], ['Salt', p.salt, 'g']] as const).map(([label, value, unit]) => <View key={label} style={styles.nutrientRow}><Text style={styles.body}>{label}</Text><Text style={styles.nutrientValue}>{amount(value, unit)}</Text></View>)}
           </Accordion>
           <Accordion key={p.code + '-additives'} title={'Tilsetningsstoffer' + (p.additives.length ? ' · ' + p.additives.length + ' registrert' : '')}>
-            <Text style={styles.body}>{p.additives.length ? p.additives.map(x => x.replace(/^[a-z]{2}:/, '').replace(/^e/, 'E')).join(', ') : 'Ingen opplysninger registrert.'}</Text>
+            <Text style={styles.caption}>{groupAdditives(p.additives).length ? groupAdditives(p.additives).length + ' forskjellige oppføringer, etter sammenslåing av overordnede E-numre og undervarianter.' : 'Ingen opplysninger registrert.'}</Text>
+            {groupAdditives(p.additives).map(a => <Pressable key={a.id} accessibilityRole="button" onPress={()=>setSelectedAdditive(a)} style={styles.additiveRow}>
+              <View style={{flex:1,gap:3}}><Text style={styles.additiveName}>{a.id} · {a.name}</Text><Text style={styles.caption}>{a.role}</Text></View><Text style={styles.arrow}>ⓘ</Text>
+            </Pressable>)}
             <Text style={styles.caption}>Dette er registrerte opplysninger, ikke en fullstendig kontroll av innholdet.</Text>
             <Pressable accessibilityRole="button" onPress={() => setTopic('additives')} style={styles.infoButton}><Text style={styles.info}>Hva betyr E-numrene? ⓘ</Text></Pressable>
           </Accordion>
@@ -87,10 +104,28 @@ export default function ProductScreen() {
             <SourceLink label="Se eller foreslå rettelser hos Open Food Facts" url={'https://world.openfoodfacts.org/product/' + p.code} />
           </Accordion>
         </View>
+        <View style={styles.alternatives}>
+          <Text style={styles.section}>Se lignende produkter</Text>
+          <Text style={styles.caption}>Vi leter etter samme registrerte produktkategori i {market.name}. Forslagene er ikke automatisk bedre eller tilgjengelige i butikk.</Text>
+          {comparableCategory(p) ? <Pressable accessibilityRole="button" style={styles.altButton} onPress={()=>{void loadAlternatives();}} disabled={alternativesLoading}>
+            <Text style={styles.altButtonText}>{alternativesLoading?'Henter alternativer…':alternativesRequested?'Søk på nytt':'Finn alternativer'}</Text>
+          </Pressable> : <Text style={styles.caption}>Produktkategorien er ikke spesifikk nok til en relevant sammenligning ennå.</Text>}
+          {!!alternativesError&&<Text style={styles.warning}>{alternativesError}</Text>}
+          {alternativesRequested&&!alternativesLoading&&!alternativesError&&alternatives.length===0&&<Text style={styles.caption}>Ingen relevante alternativer med tilstrekkelige data ble funnet.</Text>}
+          {alternatives.map(other=><Pressable accessibilityRole="button" key={other.code} onPress={()=>router.push({pathname:'/product/[id]',params:{id:other.code}})} style={styles.altRow}>
+            {other.image?<Image source={{uri:other.image}} style={styles.altImage}/>:<View style={styles.altImage}/>}
+            <View style={{flex:1,gap:4}}><Text style={styles.additiveName}>{other.name}</Text><Text style={styles.caption}>{other.brand}</Text>
+            <Text style={styles.caption}>Protein {amount(other.protein)} · Fett {amount(other.fat)} · Karbohydrat {amount(other.carbs)}</Text><NovaBadge group={other.nova} compact/></View><Text style={styles.arrow}>›</Text>
+          </Pressable>)}
+        </View>
         <Text style={styles.caption}>Velg selv. Vi viser innhold og bearbeiding, ikke en fasit på hva du skal spise.</Text>
         <SourceLink label="Kilde: Open Food Facts" url={'https://world.openfoodfacts.org/product/' + p.code} />
       </>}
     </ScrollView>
+    <InfoSheet visible={selectedAdditive!==null} title={selectedAdditive?selectedAdditive.id+' · '+selectedAdditive.name:''} onClose={()=>setSelectedAdditive(null)}>
+      <Text style={styles.body}>{selectedAdditive?.description}</Text><Text style={styles.caption}>Funksjon: {selectedAdditive?.role}. Dette er en forklaring på bruksområde, ikke en individuell sikkerhetsvurdering.</Text>
+      <SourceLink label="Generell informasjon om tilsetningsstoffer hos Mattilsynet" url="https://www.mattilsynet.no/mat-og-drikke/tilsetningsstoffer"/>
+    </InfoSheet>
     <InfoSheet visible={topic !== null} title={topic ? titles[topic] : ''} onClose={() => setTopic(null)}>
       {topic === 'nova' && <>
         <Text style={styles.body}>NOVA grupperer matvarer etter bearbeiding. Fargene er Matkontrolls visuelle hjelpemiddel, ikke en offisiell helseskala.</Text>
@@ -122,5 +157,10 @@ const styles = StyleSheet.create({
   accordionHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 17 }, accordionTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.ink },
   arrow: { fontSize: 24, color: colors.green }, details: { paddingBottom: 17, gap: 12 }, nutrientRow: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 },
   nutrientValue: { fontSize: 15, lineHeight: 23, color: colors.ink, fontWeight: '600' }, warning: { fontSize: 13, lineHeight: 21, color: '#825617' },
+  additiveRow:{flexDirection:'row',gap:12,alignItems:'center',padding:13,borderWidth:1,borderColor:colors.line,borderRadius:12,backgroundColor:'white'},
+  additiveName:{fontSize:15,fontWeight:'700',color:colors.ink},
+  alternatives:{gap:13,marginTop:10},altButton:{backgroundColor:colors.green,padding:15,borderRadius:12,alignItems:'center'},altButtonText:{fontSize:15,fontWeight:'700',color:'white'},
+  altRow:{flexDirection:'row',gap:12,alignItems:'center',padding:12,borderWidth:1,borderColor:colors.line,borderRadius:14,backgroundColor:'white'},
+  altImage:{width:58,height:70,backgroundColor:'#EBF1EB',borderRadius:9},
   novaExplanation: { padding: 13, borderRadius: 12, gap: 4 }, explanationTitle: { fontSize: 15, fontWeight: '800' },
 });
