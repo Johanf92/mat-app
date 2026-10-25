@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { type FoodProduct, getProduct, searchProducts } from '../src/openFoodFacts';
 import { useMarket } from '../src/MarketContext';
 import { type CompareFocus, COMPARE_OPTIONS, METRICS, comparisonInsight, metricAmount, comparisonDataWarnings, keyDifferences, additiveEvidenceRows, additiveEvidenceLabel, quickComparisonFacts } from '../src/comparison';
-import { productProfile, candidateNote } from '../src/alternatives';
+import { productProfile, candidateNote, relatedVariantComparisonNote } from '../src/alternatives';
 import { additiveInfo, formatAdditiveCode, summarizeAdditives, type AdditiveInfo } from '../src/additives';
 import { displayIngredientText } from '../src/ingredientEvidence';
 import { colors, InfoSheet, NovaBadge, SourceLink } from '../src/ui';
@@ -77,6 +77,7 @@ export default function Compare() {
    router.setParams({right:p.code});
  }
  const sameType=left&&right&&productProfile(left)?.kind===productProfile(right)?.kind&&productProfile(left)!==null;
+ const relatedVariantNote=left&&right?relatedVariantComparisonNote(left,right):null;
  const variantWarning=left&&right?candidateNote(left,right):null;
  const notices=left&&right?comparisonDataWarnings(left,right):[];
  const evidenceRows=left&&right?additiveEvidenceRows(left,right):[];
@@ -117,8 +118,9 @@ export default function Compare() {
       </View>
       <Text style={s.note}>Opplysningene hentes på nytt fra produktdatabasen. Forslagslisten kan vise eldre verdier.</Text>
       <Pressable accessibilityRole="button" style={s.change} onPress={()=>{setRight(null);router.setParams({right:''});}}><Text style={s.changeText}>Endre produkt B →</Text></Pressable>
-      {!sameType&&<Text style={s.warning}>Disse varene er ikke bekreftet som samme produkttype. Sammenligningen kan derfor være mindre relevant.</Text>}
+      {!sameType&&!relatedVariantNote&&<Text style={s.warning}>Disse varene er ikke bekreftet som samme produkttype. Sammenligningen kan derfor være mindre relevant.</Text>}
       {!!sameType&&<Text style={s.note}>Varene er registrert som samme hovedtype. Oppskrift og variant kan likevel være forskjellige.</Text>}
+      {!!relatedVariantNote&&<Text testID="related-variant-note" style={s.note}>{relatedVariantNote}</Text>}
       {!!variantWarning&&<Text style={s.warning}>{variantWarning}</Text>}
 
       <View testID="comparison-overview" style={s.quickPanel}>
