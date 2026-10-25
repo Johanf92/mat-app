@@ -4,7 +4,7 @@ const BASE = 'https://world.openfoodfacts.org';
 const SEARCH_BASE = 'https://search.openfoodfacts.org';
 // Search-a-licious is a separate, Lucene-based search service. Its result shape
 // uses "hits", unlike the legacy CGI search and product lookup endpoints.
-const SEARCH_FIELDS = 'code,product_name,brands,countries_tags,categories_tags,nova_group,nutriments,ingredients_text,quantity,nutriscore_grade,nutrition_grades';
+const SEARCH_FIELDS = 'code,product_name,product_name_nb,product_name_no,product_name_en,brands,countries_tags,categories_tags,nova_group,nutriments,ingredients_text,ingredients_text_nb,ingredients_text_no,ingredients_text_en,image_front_url,image_front_small_url,additives_tags,allergens_tags,quantity,nutriscore_grade,nutrition_grades';
 const FIELDS = [
   'code', 'product_name', 'product_name_no', 'product_name_nb', 'product_name_en',
   'brands', 'image_front_small_url', 'image_front_url', 'ingredients_text',

@@ -27,6 +27,9 @@ test('Norway is default; full-text search uses Search-a-licious with a country f
   assert.equal(u.searchParams.get('langs'), 'no,en');
   assert.ok(u.searchParams.get('fields').includes('nutriments'));
   assert.ok(u.searchParams.get('fields').includes('nutriscore_grade'));
+  assert.ok(u.searchParams.get('fields').includes('image_front_small_url'));
+  assert.ok(u.searchParams.get('fields').includes('ingredients_text_nb'));
+  assert.ok(u.searchParams.get('fields').includes('additives_tags'));
 });
 test('country changes the filter; worldwide deliberately has no filter', () => {
   const es = MARKETS.find(m => m.code === 'es');

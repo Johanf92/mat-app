@@ -123,3 +123,7 @@ Forslag kan fortsatt være feil når selve produktregistreringen er feil. Det ka
 
 
 E340-familier kan være visuelt samlet på produktsiden for å unngå å telle samlegruppen som et ekstra stoff. Den underliggende kildedokumentasjonen **beholder likevel både parent og underkode** i sammenligningen, slik at en visuelt skjult samlegruppe aldri feilaktig blir omtalt som fraværende.
+
+## Søkefelter og visningskvalitet
+
+Søket ber nå også om norske og engelske ingrediens-/produktnavnfelt, produktbilder, additive tags og allergen tags. Alle disse er **kildedata fra søkeindeksen**, som kan være mangelfulle eller eldre enn strekkodeoppslaget. Nye felter gjør at eksisterende normalisering og kvalitetsfiltre oftere kan bruke samme type kildeopplysninger i forslagene som på produktsiden. De betyr ikke at produktoppføringene er verifisert.
