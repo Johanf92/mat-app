@@ -45,11 +45,12 @@ export default function Compare() {
  const [expandedFact,setExpandedFact]=useState<string|null>(null);
  const [detailOpen,setDetailOpen]=useState<DetailId|null>(null);
  const [selectedAdditive,setSelectedAdditive]=useState<AdditiveInfo|null>(null);
+ const [failedImageCodes,setFailedImageCodes]=useState<string[]>([]);
  const searchController=useRef<AbortController|null>(null);
  useEffect(()=>{
    const controller=new AbortController();
    setError('');setLoading(true);setLeft(null);setRight(null);
-   setExpandedFact(null);setDetailOpen(null);setShowIngredients(false);
+   setExpandedFact(null);setDetailOpen(null);setShowIngredients(false);setFailedImageCodes([]);
    if(!leftCode){setError('Velg et produkt før du sammenligner.');setLoading(false);return ()=>controller.abort();}
    Promise.all([getProduct(leftCode,controller.signal),rightCode?getProduct(rightCode,controller.signal):Promise.resolve(null)])
     .then(([a,b])=>{if(controller.signal.aborted)return;setLeft(a);setRight(b);
@@ -101,7 +102,10 @@ export default function Compare() {
       {!!searchError&&<Text style={s.warning}>{searchError}</Text>}
       {searched&&!searching&&!searchError&&!results.length&&<Text style={s.note}>Ingen treff. Prøv et annet søkeord eller land.</Text>}
       {results.map(p=><Pressable key={p.code} accessibilityRole="button" onPress={()=>choose(p)} style={s.result}>
-        {p.image?<Image source={{uri:p.image}} style={s.resultImage} resizeMode="contain"/>:<View style={s.resultImage}/>}
+        {p.image&&!failedImageCodes.includes(p.code)
+         ?<Image source={{uri:p.image}} style={s.resultImage} resizeMode="contain"
+            onError={()=>setFailedImageCodes(codes=>codes.includes(p.code)?codes:[...codes,p.code])}/>
+         :<View style={[s.resultImage,s.resultImageFallback]}><Text style={s.resultImageFallbackText}>{p.image?'Bilde utilgjengelig':'Uten bilde'}</Text></View>}
         <View style={{flex:1,gap:4}}><Text style={s.resultName}>{p.name}</Text><Text style={s.note}>{p.brand}</Text><NovaBadge group={p.nova} compact/></View>
         <Text style={s.arrow}>›</Text>
       </Pressable>)}
@@ -110,7 +114,12 @@ export default function Compare() {
     {left&&right&&!loading&&<>
       <View style={s.productGrid}>
        {[left,right].map((p,index)=><View key={p.code} style={s.productCard}>
-        {p.image?<Image source={{uri:p.image}} style={s.productImage} resizeMode="contain"/>:<View style={[s.productImage,s.productImagePlaceholder]}><Text style={s.productImagePlaceholderText}>Bilde ikke registrert</Text></View>}
+        {p.image&&!failedImageCodes.includes(p.code)
+          ?<Image source={{uri:p.image}} style={s.productImage} resizeMode="contain"
+            onError={()=>setFailedImageCodes(codes=>codes.includes(p.code)?codes:[...codes,p.code])}/>
+          :<View style={[s.productImage,s.productImagePlaceholder]}>
+            <Text style={s.productImagePlaceholderText}>{p.image?'Kunne ikke laste bildet':'Bilde ikke registrert'}</Text>
+          </View>}
         <Text style={s.columnCaption}>PRODUKT {index===0?'A':'B'}</Text>
         <Text numberOfLines={3} style={s.productName}>{p.name}</Text><Text numberOfLines={2} style={s.note}>{p.brand}</Text>
         <NovaBadge group={p.nova} compact/>
@@ -240,7 +249,7 @@ const s=StyleSheet.create({
  input:{fontSize:16,backgroundColor:'white',borderRadius:12,padding:14,borderWidth:1,borderColor:colors.line,color:colors.ink},
  button:{backgroundColor:colors.green,borderRadius:12,padding:15,alignItems:'center',minHeight:48},buttonText:{color:'white',fontSize:15,fontWeight:'700'},
  disabled:{opacity:0.5},result:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:'white',borderRadius:13,borderColor:colors.line,borderWidth:1,padding:12},
- resultImage:{width:54,height:62,borderRadius:8,backgroundColor:'#E9EEE9'},resultName:{fontSize:15,fontWeight:'700',color:colors.ink},arrow:{color:colors.green,fontSize:25},
+ resultImage:{width:54,height:62,borderRadius:8,backgroundColor:'#E9EEE9'},resultImageFallback:{justifyContent:'center',alignItems:'center'},resultImageFallbackText:{fontSize:10,color:colors.muted,textAlign:'center',padding:3},resultName:{fontSize:15,fontWeight:'700',color:colors.ink},arrow:{color:colors.green,fontSize:25},
  productGrid:{flexDirection:'row',gap:12},productCard:{flex:1,backgroundColor:'white',borderColor:colors.line,borderWidth:1,borderRadius:16,padding:12,gap:8,minWidth:0},
  productImage:{width:'100%',height:95,borderRadius:10,backgroundColor:'#EDF2ED'},productImagePlaceholder:{justifyContent:'center',alignItems:'center',padding:8},productImagePlaceholderText:{fontSize:11,color:colors.muted,textAlign:'center'},columnCaption:{fontSize:11,letterSpacing:0.6,color:colors.muted,fontWeight:'800'},
  productName:{fontSize:16,fontWeight:'800',color:colors.ink,minHeight:35},change:{minHeight:44,justifyContent:'center',alignSelf:'flex-start'},
