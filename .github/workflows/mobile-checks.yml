@@ -23,7 +23,7 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: One-off OFF search diagnostic
-        if: ${{ contains(github.event.head_commit.message, 'diag: probe') }}
+        if: "contains(github.event.head_commit.message, 'diag: probe')"
         continue-on-error: true
         run: node scripts/off-api-diagnostic.cjs
       - name: Unit tests
