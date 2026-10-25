@@ -27,11 +27,14 @@ const textOf = (p: FoodProduct) => fold([p.name, ...p.categories].join(' ').repl
 function isOatBased(p: FoodProduct): boolean {
   const text = textOf(p);
   const ingredients = fold(p.ingredients ?? '');
-  return /\b(oat|havre|hafer|avena)[a-z]*/.test(text + ' ' + ingredients)
+  return /\b(oat|havre|hafer|avena|kaura)[a-z]*/.test(text + ' ' + ingredients)
     || (/oatly/.test(fold(p.brand)) && /ikaffe|oat|barista|kaffe/.test(text));
 }
 function isBarista(p: FoodProduct): boolean {
-  return /barista|ikaffe|for coffee|til kaffe|coffee edition|kaffedrikk|kahvi/.test(textOf(p));
+  // Search index categories can be stale. A generic oat drink tagged as
+  // "barista" is not enough to claim that this specific variant is for coffee.
+  // Require that the product name itself identifies the coffee variant.
+  return /barista|ikaffe|for coffee|til kaffe|coffee edition|kaffedrikk|kahvi|kahville/.test(fold(p.name));
 }
 function isYogurt(p: FoodProduct): boolean {
   // Skyr has a different typical use/texture; don't auto-match it to yoghurt.
@@ -62,7 +65,7 @@ function plainYogurt(p: FoodProduct): boolean {
     && (explicitlyPlain(p) || plainDairyIngredients(p));
 }
 function isDrink(p: FoodProduct): boolean {
-  return /(drink|drikke|drikk|melk|milk|beverage|barista|ikaffe|kaffe|coffee)/.test(textOf(p));
+  return /(drink|drikke|drikk|dryck|juoma|melk|milk|beverage|barista|ikaffe|kaffe|coffee)/.test(textOf(p));
 }
 
 /**
@@ -290,6 +293,10 @@ export function relatedVariantComparisonNote(a: FoodProduct, b: FoodProduct): st
     return 'Begge er cola, men produkt A er vanlig cola og produkt B er sukkerfri cola. Dette er en relevant sammenligning av ulike varianter, ikke av identiske oppskrifter.';
   if (left === 'cola-sugar-free' && right === 'cola-regular')
     return 'Begge er cola, men produkt A er sukkerfri cola og produkt B er vanlig cola. Dette er en relevant sammenligning av ulike varianter, ikke av identiske oppskrifter.';
+  if (left === 'oat-barista' && right === 'oat-drink')
+    return 'Begge er havredrikker, men bare produkt A er registrert som barista-/kaffevariant. De kan sammenlignes, men er ikke automatisk likeverdige alternativer til kaffe.';
+  if (left === 'oat-drink' && right === 'oat-barista')
+    return 'Begge er havredrikker, men bare produkt B er registrert som barista-/kaffevariant. De kan sammenlignes, men er ikke automatisk likeverdige alternativer til kaffe.';
   if ((left === 'milk-low-fat' && right === 'milk-whole') || (left === 'milk-whole' && right === 'milk-low-fat'))
     return 'Begge er melk, men den ene er lettmelk og den andre helmelk. Sammenlign gjerne fettinnhold og energi; dette er ulike varianter.';
   if ((left === 'oats-plain' && right === 'oats-gluten-free') || (left === 'oats-gluten-free' && right === 'oats-plain'))

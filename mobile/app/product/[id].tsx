@@ -11,6 +11,7 @@ import { ingredientTerms, type IngredientTermInfo } from '../../src/ingredientTe
 import { comparableCategory, findAlternatives, productProfile, candidateNote, fallbackProductIcon } from '../../src/alternatives';
 import { displayIngredientText, ingredientCodeNote } from '../../src/ingredientEvidence';
 import { productDataStatus } from '../../src/productDataStatus';
+import { formatAllergenTags } from '../../src/allergens';
 import { nutriScoreDescription, nutriScoreLabel, NUTRI_SCORE_SOURCE, NORWEGIAN_LABEL_SOURCE } from '../../src/nutriScore';
 import { productSnapshot } from '../../src/productSnapshot';
 
@@ -114,7 +115,7 @@ export default function ProductScreen() {
             {([['Energi', p.energy, 'kcal'], ['Protein', p.protein, 'g'], ['Fett', p.fat, 'g'], ['Karbohydrat', p.carbs, 'g'], ['Hvorav sukkerarter', p.sugar, 'g'], ['Fiber', p.fiber, 'g'], ['Salt', p.salt, 'g']] as const).map(([label, value, unit]) => <View key={label} style={styles.nutrientRow}><Text style={styles.body}>{label}</Text><Text style={styles.nutrientValue}>{amount(value, unit)}</Text></View>)}
           </Accordion>
           <Accordion key={p.code + '-additives'} title={additives.title}>
-            {additives.rawTags.length === 0 && <Text style={styles.body}>Ingen opplysninger registrert. Dette bekrefter ikke at produktet er uten tilsetningsstoffer.</Text>}
+            {additives.rawTags.length === 0 && <Text testID="missing-e-codes" style={styles.body}>Ingen E-numre registrert i Open Food Facts sitt E-kodefelt. Se også ingredienslisten og kontroller emballasjen. Manglende registrering betyr ikke at varen er fri for tilsetningsstoffer.</Text>}
             {!!additives.groupingNote && <Text style={styles.caption}>{additives.groupingNote}</Text>}
             {additives.items.map(a => <Pressable key={a.id} accessibilityRole="button" accessibilityLabel={'Les om ' + formatAdditiveCode(a.id) + ', ' + a.name} onPress={() => setSelectedAdditive(a)} style={styles.additiveRow}>
               <View style={{ flex: 1, gap: 3 }}><Text style={styles.additiveName}>{formatAdditiveCode(a.id)} · {a.name}</Text><Text style={styles.caption}>{a.role}</Text></View><Text style={styles.arrow}>ⓘ</Text>
@@ -127,7 +128,8 @@ export default function ProductScreen() {
             <Pressable accessibilityRole="button" onPress={() => setTopic('additives')} style={styles.infoButton}><Text style={styles.info}>Hva betyr E-numrene? ⓘ</Text></Pressable>
           </Accordion>
           <Accordion key={p.code + '-allergens'} title="Allergenopplysninger">
-            <Text style={styles.body}>{p.allergens.length ? p.allergens.map(x => x.replace(/^[a-z]{2}:/, '')).join(', ') : 'Allergenopplysninger er ikke registrert.'}</Text>
+            <Text testID="allergen-display" style={styles.body}>{p.allergens.length ? formatAllergenTags(p.allergens).join(', ') : 'Allergenopplysninger er ikke registrert.'}</Text>
+            {!!p.allergens.length && <Text style={styles.caption}>Navnene er forenklet fra kildens oppføringer; se originalkodene under «Kilde og datakvalitet».</Text>}
             <Text style={styles.warning}>Manglende opplysninger betyr ikke allergenfritt. Kontroller alltid emballasjen ved allergi.</Text>
           </Accordion>
           <View testID="product-alternatives" style={styles.alternatives}>
@@ -178,6 +180,7 @@ export default function ProductScreen() {
             <Text style={styles.body}>{market.tag === null ? 'Du søker i alle land.' : p.countries.includes(market.tag) ? 'Registrert for ' + market.name + '. Dette er ikke en lagerstatus.' : 'Ikke registrert for ' + market.name + ' i dataene vi har. Varen kan likevel finnes der.'}</Text>
             <Text style={styles.caption}>Strekkode: {p.code}</Text>
             {!!additives.rawTags.length && <Text selectable style={styles.caption}>Originale tilsetningsstoffkoder: {additives.rawTags.join(', ')}</Text>}
+            {!!p.allergens.length && <Text selectable testID="allergens-raw" style={styles.caption}>Originale allergenoppføringer: {p.allergens.join(', ')}</Text>}
             {p.modifiedAt !== null && p.modifiedAt > 0 && <Text style={styles.caption}>Sist endret hos kilden: {new Date(p.modifiedAt * 1000).toLocaleDateString('nb-NO')}. Dette er ikke en kvalitetsgodkjenning.</Text>}
             <Text style={styles.caption}>Ekstern kildeside, ikke alternativsøket i Matkontroll.</Text>
             <SourceLink label="Åpne originalproduktet i nettleseren" url={'https://world.openfoodfacts.org/product/' + p.code} />

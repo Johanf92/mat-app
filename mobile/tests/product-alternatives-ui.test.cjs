@@ -46,6 +46,7 @@ function harness({ supported = true, find = async () => [], note = () => null, t
     '../../src/additives': { ADDITIVE_GENERAL_SOURCE: '', additiveSourceLabel: () => 'Kilde: Mattilsynet', formatAdditiveCode: x => x, summarizeAdditives: () => ({ title: 'Tilsetningsstoffer', rawTags: [], items: [], unrecognized: [] }) },
     '../../src/ingredientEvidence': { displayIngredientText: value => value || '', ingredientCodeNote: () => null },
     '../../src/ingredientTerms': { ingredientTerms: terms },
+    '../../src/allergens': { formatAllergenTags: tags => tags.includes('en:milk') ? ['Melk'] : tags },
     '../../src/productDataStatus': { productDataStatus: () => ({headline:'Oppgitt i kilden: 7 av 7 næringsfelt.',notes:[]}) },
     '../../src/nutriScore': {nutriScoreLabel: x => x ? String(x).toUpperCase() : 'Ikke oppgitt',
       nutriScoreDescription: x => x ? 'Fra kilden: '+x : 'Ikke registrert',
@@ -263,4 +264,22 @@ test('product alternative image fallback uses product-specific symbol',async()=>
  byId(h.render(),'find-alternatives').props.onPress();await flush();
  const panel=byId(h.render(),'product-alternatives');
  assert.match(text(panel),/🍞/);
+});
+
+
+test('source allergen aliases display as one name while keeping all original tags',()=>{
+ const original=product.allergens;
+ product.allergens=['en:milk','no:lettmelk'];
+ try{
+  const h=harness(),root=h.render();
+  assert.equal(text(byId(root,'allergen-display')),'Melk');
+  assert.match(text(byId(root,'allergens-raw')),/en:milk, no:lettmelk/);
+  assert.match(text(root),/Kontroller alltid emballasjen ved allergi/);
+ }finally{product.allergens=original;}
+});
+test('empty separate E-code field does not assert the product is additive-free',()=>{
+ const h=harness(),txt=text(byId(h.render(),'missing-e-codes'));
+ assert.match(txt,/Ingen E-numre registrert/);
+ assert.match(txt,/E-kodefelt/);
+ assert.match(txt,/ikke at varen er fri/);
 });

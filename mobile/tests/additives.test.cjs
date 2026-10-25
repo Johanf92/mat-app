@@ -161,3 +161,20 @@ test('basic bread and cereal additives have neutral sourced names',()=>{
   assert.doesNotMatch(x.description,/sunnere|farlig|ufarlig/i);
  }
 });
+
+
+test('E170 and E472e have accurate separate Norwegian explanations',()=>{
+ const chalk=additiveInfo('en:e170');
+ assert.equal(chalk.id,'E170');
+ assert.equal(chalk.name,'Kalsiumkarbonat');
+ assert.equal(chalk.role,'Fargestoff');
+ assert.match(chalk.source,/mattilsynet\.no/);
+ const datem=additiveInfo('en:e472e');
+ assert.equal(datem.id,'E472E');
+ assert.match(datem.name,/diacetylvinsyreestere/);
+ assert.equal(datem.role,'Emulgator');
+ assert.equal(formatAdditiveCode('E472E'),'E472e');
+ assert.match(datem.source,/mattilsynet\.no/);
+ assert.doesNotMatch([chalk.description,datem.description].join(' '),/sunnere|farlig|ufarlig/);
+ assert.notEqual(datem.name,additiveInfo('en:e472b').name);
+});

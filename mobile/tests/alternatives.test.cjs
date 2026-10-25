@@ -380,3 +380,22 @@ test('photo fallback symbols match the supported product type without inventing 
   assert.equal(fallbackProductIcon(p),expected,name);
  }
 });
+
+
+test('Finnish Coop Kaurajuoma is a plain oat drink unless the product name confirms barista',()=>{
+ const finnish=next('1111111100810',{name:'Kaurajuoma',brand:'Coop',ingredients:'Vesi, kaura, rypsiöljy',categories:['en:oat-drinks','en:barista-products']});
+ const coffee=next('1111111100811',{name:'Kaurajuoma Barista',brand:'Coop',ingredients:'Vesi, kaura, rypsiöljy',categories:[]});
+ const regular=next('1111111100812',{name:'Havredrikk',brand:'Coop',ingredients:'Vann, havre, olje'});
+ assert.equal(productProfile(finnish)?.kind,'oat-drink');
+ assert.equal(productProfile(coffee)?.kind,'oat-barista');
+ assert.equal(productProfile(regular)?.kind,'oat-drink');
+ assert.deepEqual(relevantAlternatives(base,[finnish,regular,coffee],market).map(x=>x.code),[coffee.code]);
+ assert.match(relatedVariantComparisonNote(base,finnish),/Begge er havredrikker/);
+ assert.match(relatedVariantComparisonNote(base,finnish),/produkt A/);
+ assert.match(relatedVariantComparisonNote(finnish,base),/produkt B/);
+ assert.equal(relatedVariantComparisonNote(base,coffee),null);
+});
+test('Finnish generic oat-based porridge is never automatically a drink',()=>{
+ const porridge=next('1111111100813',{name:'Kaurapuuro',brand:'Coop',ingredients:'Kaura, vesi',categories:[]});
+ assert.equal(productProfile(porridge),null);
+});

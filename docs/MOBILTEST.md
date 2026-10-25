@@ -31,3 +31,10 @@ Søk på `grovbrød`, `corn flakes`, `jordbærsyltetøy` og `tomatsuppe`. Velg e
 Noter produktnavn/strekkode, hvilken knapp som ble brukt og hva som skjedde. Ett skjermbilde er nok per ulik feiltype; det er ikke nødvendig å fotografere hele forløpet. Søkedata kan være ufullstendige eller eldre enn strekkodeoppslag hos Open Food Facts.
 
 **Godkjenningskriterium:** Ingen appkrasj, ingen meningsløse automatiske forslag, ingen udokumenterte helse- eller allergenpåstander. Antall treff er mindre viktig enn at treffene er relevante.
+
+
+## Oppfølging etter skjermbildene 25. oktober
+
+- **TINE yoghurt gresk type:** Åpne «Tilsetningsstoffer» og se at tomt E-kodefelt forklares som manglende registrering, ikke som bekreftet fri for E-stoffer. Åpne «Allergenopplysninger»: `en:milk` og `no:lettmelk` skal vises som «Melk», mens råkodene finnes under kilder.
+- **Oatly iKaffe vs Coop Kaurajuoma:** Et produkt uten barista-/kaffemerking i navnet skal ikke automatisk anbefales som baristaalternativ selv om en gammel søkeindeks har en slik kategorikode. Manuell sammenligning er fortsatt mulig og skal beskrive dem som havredrikkvarianter, ikke som urelaterte produktgrupper.
+- **Brød og havredrikk:** Sjekk om E170 og E472e nå har faktiske stoffnavn, funksjon og kilde. Fravær av en oppføring i feltet er fremdeles ikke bevis for fravær i varen.

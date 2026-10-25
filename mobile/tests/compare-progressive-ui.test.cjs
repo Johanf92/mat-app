@@ -22,7 +22,7 @@ const facts=[
  {key:'additive-E211',label:'E211 · Natriumbenzoat',summary:'Oppført for B.',detail:'E211 er oppført for B i de tilgjengelige feltene.'},
  {key:'nova',label:'Bearbeiding',summary:'Begge NOVA 4.',detail:'NOVA er ikke en helsescore.'}
 ];
-function harness(){
+function harness({oatVariants=false}={}){
  const state=[];let cursor=0;const routes=[];
  const jsx=(type,props)=>({type,props:props||{}});
  const mocks={
@@ -60,7 +60,11 @@ function harness(){
     additiveEvidenceLabel:s=>s==='both'?'Ingrediens og felt':'Ikke oppført',
     quickComparisonFacts:()=>facts
   },
-  '../src/alternatives':{productProfile:()=>({kind:'cola-regular'}),candidateNote:()=>null,relatedVariantComparisonNote:()=>null},
+  '../src/alternatives':{
+    productProfile:p=>({kind:oatVariants?(p.code===first.code?'oat-barista':'oat-drink'):'cola-regular'}),
+    candidateNote:()=>null,
+    relatedVariantComparisonNote:()=>oatVariants?'Begge er havredrikker, men bare produkt A er barista-/kaffevariant.':null
+  },
   '../src/additives':{
     additiveInfo:()=>({id:'E211',name:'Natriumbenzoat',description:'Konserveringsmiddel',source:'https://example.org'}),
     formatAdditiveCode:s=>s,summarizeAdditives:()=>({unrecognized:[]})
@@ -170,4 +174,11 @@ test('NOVA and Nutri-Score remain independent descriptions in comparison',()=>{
  assert.match(content,/Nutri-Score \(A–E\) beskriver næringsprofil/);
  assert.match(content,/NOVA \(1–4\) beskriver bearbeiding/);
  assert.doesNotMatch(content,/kårer vinner|sunnest valgt/);
+});
+
+
+test('related oat drink variants get a useful note rather than unrelated-products warning',()=>{
+ const h=harness({oatVariants:true}),root=h.render();
+ assert.match(text(root),/Begge er havredrikker/);
+ assert.doesNotMatch(text(root),/ikke bekreftet som samme produkttype/);
 });
