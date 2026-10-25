@@ -274,3 +274,11 @@ test('negative label language in ingredients is not reported as an explicitly li
  assert.deepEqual(detector({ingredients:'Vann, uten melk og uten salt'},{ingredients:'Vann'}),[]);
  assert.deepEqual(detector({ingredients:'Vann, sukker, uten tilsatt søtstoff'},{ingredients:'Vann'}).map(x=>x.key),['sugar']);
 });
+
+test('multilingual source fields cannot produce misleading missing-word differences',()=>{
+ const one={...a,ingredientLanguage:'no',ingredients:'Vann, sukker, havre'};
+ const finnish={...b,ingredientLanguage:'fi',ingredients:'Vesi, sokeri, kaura'};
+ assert.deepEqual(ingredientComparisonModule.ingredientMentionDifferences(one,finnish),[]);
+ assert.match(comparisonInsight(one,finnish,'ingredients'),/språk/);
+ assert.match(comparisonInsight(one,finnish,'ingredients'),/gjetter ikke/);
+});

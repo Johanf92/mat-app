@@ -127,3 +127,5 @@ E340-familier kan være visuelt samlet på produktsiden for å unngå å telle s
 ## Søkefelter og visningskvalitet
 
 Søket ber nå også om norske og engelske ingrediens-/produktnavnfelt, produktbilder, additive tags og allergen tags. Alle disse er **kildedata fra søkeindeksen**, som kan være mangelfulle eller eldre enn strekkodeoppslaget. Nye felter gjør at eksisterende normalisering og kvalitetsfiltre oftere kan bruke samme type kildeopplysninger i forslagene som på produktsiden. De betyr ikke at produktoppføringene er verifisert.
+
+Ingrediensordsammenligningen støtter norske og engelske registreringer. Er et produkt registrert med et annet språk (for eksempel finsk), vises en forklaring i stedet for å påstå at norske ord «mangler». Hele originalteksten kan fortsatt leses. Ukjent språk i selve datakilden er også en begrensning.

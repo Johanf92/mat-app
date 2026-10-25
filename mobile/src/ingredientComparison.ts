@@ -15,9 +15,17 @@ const TERMS:readonly ListedTerm[]=[
   {key:'milk',label:'melk',re:/(^|[^a-zA-ZÀ-ÖØ-öø-ÿ])(?:melk|lettmelk|helmelk|skummet[\s-]*melk|milk|skimmed[\s-]*milk)(?=$|[^a-zA-ZÀ-ÖØ-öø-ÿ])/iu},
 ];
 
+type IngredientSource=Pick<FoodProduct,'ingredients'> & Partial<Pick<FoodProduct,'ingredientLanguage'>>;
+const SUPPORTED_LANGUAGES=new Set(['no','nb','en','unknown']);
+function comparableLanguages(a:IngredientSource,b:IngredientSource):boolean{
+  // Swedish/Finnish/French or other-language source texts may contain genuine
+  // ingredients that our tiny NO/EN word list cannot recognize.
+  return [a.ingredientLanguage,b.ingredientLanguage]
+    .every(lang=>!lang||SUPPORTED_LANGUAGES.has(lang.toLowerCase()));
+}
 export type IngredientMentionDifference={key:string;label:string;side:'A'|'B'};
-export function ingredientMentionDifferences(a:Pick<FoodProduct,'ingredients'>,b:Pick<FoodProduct,'ingredients'>):IngredientMentionDifference[]{
-  if(!a.ingredients?.trim()||!b.ingredients?.trim())return [];
+export function ingredientMentionDifferences(a:IngredientSource,b:IngredientSource):IngredientMentionDifference[]{
+  if(!a.ingredients?.trim()||!b.ingredients?.trim()||!comparableLanguages(a,b))return [];
   // Ingredient data occasionally contain marketing/absence language.
   // Negated phrases must not count as a positive ingredient mention.
   const stripNegations=(value:string)=>displayIngredientText(value).normalize('NFKC')
@@ -30,9 +38,11 @@ export function ingredientMentionDifferences(a:Pick<FoodProduct,'ingredients'>,b
     return [{key:t.key,label:t.label,side:inA?'A' as const:'B' as const}];
   });
 }
-export function ingredientComparisonInsight(a:Pick<FoodProduct,'ingredients'>,b:Pick<FoodProduct,'ingredients'>):string {
+export function ingredientComparisonInsight(a:IngredientSource,b:IngredientSource):string {
   if(!a.ingredients?.trim()||!b.ingredients?.trim())
     return 'Ingredienslisten mangler for minst ett produkt. Da kan vi ikke trekke sikre konklusjoner om forskjellene.';
+  if(!comparableLanguages(a,b))
+    return 'Minst én ingrediensliste er registrert på et språk som den enkle ordsammenligningen ikke støtter. Les kildeteksten direkte; vi teller ikke ingredienser automatisk og gjetter ikke på oversettelser.';
   const differences=ingredientMentionDifferences(a,b);
   if(differences.length){
     const aTerms=differences.filter(x=>x.side==='A').map(x=>x.label);
