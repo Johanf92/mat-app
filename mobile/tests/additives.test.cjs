@@ -103,3 +103,22 @@ test('E211 sodium benzoate has a neutral explanatory role',()=>{
  assert.equal(item.role,'Konserveringsmiddel');
  assert.doesNotMatch(item.description,/farlig|sunnere|forbudt/);
 });
+
+test('Zero comparison codes have neutral Norwegian source-backed explanations', () => {
+  const e331=additiveInfo('en:e331');
+  assert.equal(e331.name,'Natriumsitrater');
+  assert.equal(e331.role,'Surhetsregulerende middel');
+  assert.match(e331.source,/mattilsynet\.no/);
+  const e950=additiveInfo('en:e950');
+  assert.equal(e950.name,'Acesulfam K');
+  assert.equal(e950.role,'Søtstoff');
+  const e951=additiveInfo('en:e951');
+  assert.equal(e951.name,'Aspartam');
+  assert.equal(e951.role,'Søtstoff');
+  assert.match(e951.description,/fenylalanin/);
+  assert.match(e951.description,/PKU/);
+  for(const item of [e331,e950,e951]){
+    assert.match(item.source,/mattilsynet\.no/);
+    assert.doesNotMatch(item.description,/sunnere|farlig|ufarlig/);
+  }
+});
