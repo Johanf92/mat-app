@@ -32,6 +32,7 @@ export default function ProductScreen() {
   const [fullIngredients, setFullIngredients] = useState(false);
   const [selectedAdditive,setSelectedAdditive]=useState<AdditiveInfo|null>(null);
   const [selectedTerm,setSelectedTerm]=useState<IngredientTermInfo|null>(null);
+  const [imageLoadFailed,setImageLoadFailed]=useState(false);
   const [alternatives,setAlternatives]=useState<FoodProduct[]>([]);
   const [alternativesLoading,setAlternativesLoading]=useState(false);
   const [alternativesError,setAlternativesError]=useState('');
@@ -45,7 +46,7 @@ export default function ProductScreen() {
   }
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true); setProduct(null); setError(''); setFullIngredients(false); setTopic(null); setAlternatives([]); setAlternativesRequested(false); setSelectedAdditive(null);setSelectedTerm(null);
+    setLoading(true); setProduct(null); setImageLoadFailed(false); setError(''); setFullIngredients(false); setTopic(null); setAlternatives([]); setAlternativesRequested(false); setSelectedAdditive(null);setSelectedTerm(null);
     getProduct(id ?? '', controller.signal).then(p => {
       if (!controller.signal.aborted) { setProduct(p); if (!p) setError('Produktet finnes ikke i Open Food Facts.'); }
     }).catch(e => {
@@ -66,7 +67,11 @@ export default function ProductScreen() {
       {!!error && <View style={styles.details}><Text accessibilityRole="alert" style={styles.body}>{error}</Text><Pressable onPress={() => setRetry(x => x + 1)} style={styles.infoButton}><Text style={styles.info}>Prøv igjen</Text></Pressable></View>}
       {p && <>
         <View style={styles.productHeader}>
-          {p.image ? <Image source={{ uri: p.image }} style={styles.photo} resizeMode="contain" /> : <View style={[styles.photo, styles.photoPlaceholder]}><Text style={styles.photoPlaceholderText}>Bilde ikke registrert</Text></View>}
+          {p.image && !imageLoadFailed
+            ? <Image source={{ uri: p.image }} style={styles.photo} resizeMode="contain" onError={() => setImageLoadFailed(true)} />
+            : <View style={[styles.photo, styles.photoPlaceholder]}>
+                <Text style={styles.photoPlaceholderText}>{p.image ? 'Kunne ikke laste bildet' : 'Bilde ikke registrert'}</Text>
+              </View>}
           <View style={styles.meta}><Text style={styles.brand}>{p.brand}</Text><Text accessibilityRole="header" style={styles.title}>{p.name}</Text>{!!p.quantity && <Text style={styles.caption}>{p.quantity}</Text>}</View>
         </View>
         <Pressable accessibilityRole="button" accessibilityLabel={'Bearbeidingsgrad. ' + (p.nova ? 'NOVA ' + p.nova : 'Ikke oppgitt') + '. Trykk for forklaring.'}
