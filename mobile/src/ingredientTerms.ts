@@ -16,7 +16,7 @@ const AROMA: IngredientTermInfo = {
   name: 'Aroma',
   category: 'Smak og lukt',
   description:
-    '«Aroma» er en samlebetegnelse for stoffer eller blandinger som tilsettes for å gi eller endre lukt og smak. Det er ikke ett bestemt E-nummer. En aroma kan bestå av flere bestanddeler, og ingredienslisten navngir vanligvis ikke alle sammen. Ordet alene forteller ikke hvordan aromaen er fremstilt eller om produktet er helseskadelig.',
+    '«Aroma» er en samlebetegnelse for stoffer eller blandinger som tilsettes for å gi eller endre lukt og smak. Det er ikke ett bestemt E-nummer. En aroma kan bestå av flere bestanddeler, og ingredienslisten navngir vanligvis ikke alle sammen. Ordet alene forteller ikke hvordan aromaen er fremstilt, hvor mye som er brukt eller noe sikkert om helserisikoen ved et bestemt produkt.',
   source: 'https://www.mattilsynet.no/mat-og-drikke/matproduksjon/tilsatte-stoffer-i-mat/aroma',
 };
 
