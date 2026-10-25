@@ -369,6 +369,17 @@ function variantKey(p: FoodProduct, kind: ProductKind): string {
   const colaSignature=colaMetrics.filter(x=>x!==null).length>=2
     ?colaMetrics.map(x=>x===null?'?':x.toFixed(2)).join('|')
     :identity(p);
+  if (kind === 'tomato-ketchup') {
+    const name=fold(p.name);
+    const reduced=/mindre[ -]*sukker|redusert[ -]*sukker|reduced[ -]*sugar|less[ -]*sugar|sukkerfri|sugar[ -]*free|uten[ -]*tilsatt[ -]*sukker/.test(name);
+    return kind+'|'+brand+'|'+(reduced?'reduced':'regular')+'|'+colaSignature;
+  }
+  if (kind === 'mackerel-tomato') {
+    const name=fold(p.name);
+    const preparation=/hakket|grovhakket|chopped|shredded/.test(name)?'chopped'
+      :/hel[ -]*filet|filet|fillet/.test(name)?'fillet':'unspecified';
+    return kind+'|'+brand+'|'+preparation+'|'+colaSignature;
+  }
   if (kind === 'cola-regular') return kind + '|' + brand + '|' + colaSignature;
   if (kind === 'cola-sugar-free') {
     // Light and Zero are both sugar-free, but their formulations can differ.
