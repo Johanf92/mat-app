@@ -15,7 +15,7 @@ for (const name of ['catalog', 'openFoodFacts']) {
 }
 process.on('exit', () => fs.rmSync(folder, { recursive: true, force: true }));
 const { DEFAULT_MARKET, MARKETS, numeric, readableText, novaInfo, amount, flag } = require(path.join(folder, 'catalog.js'));
-const { normalize, buildSearchUrl, buildProductUrl, searchProducts, getProduct } = require(path.join(folder, 'openFoodFacts.js'));
+const { normalize, buildSearchUrl, buildCategoryUrl, buildProductUrl, searchProducts, getProduct } = require(path.join(folder, 'openFoodFacts.js'));
 const base = { code: '7310867104494', product_name: 'Test', countries_tags: ['en:norway'] };
 
 test('Norway is default; market and language stay separate', () => {
@@ -31,6 +31,15 @@ test('country changes the filter; worldwide deliberately has no filter', () => {
   assert.equal(new URL(buildSearchUrl('yogur', es)).searchParams.get('tag_0'), 'en:spain');
   const world = MARKETS.find(m => m.code === 'world');
   assert.equal(new URL(buildSearchUrl('yoghurt', world)).searchParams.has('tagtype_0'), false);
+});
+test('structured category search uses documented market filter, while all-land search omits it', () => {
+  const url = new URL(buildCategoryUrl('en:oat-drinks', DEFAULT_MARKET));
+  assert.equal(url.pathname, '/api/v2/search');
+  assert.equal(url.searchParams.get('categories_tags'), 'en:oat-drinks');
+  assert.equal(url.searchParams.get('countries_tags_en'), 'norway');
+  assert.equal(url.searchParams.get('page_size'), '60');
+  const all = new URL(buildCategoryUrl('en:greek-yogurts', MARKETS.find(m => m.code === 'world')));
+  assert.equal(all.searchParams.has('countries_tags_en'), false);
 });
 test('barcodes are always global and do not leak a country into the URL', () => {
   const u = new URL(buildProductUrl(base.code));
