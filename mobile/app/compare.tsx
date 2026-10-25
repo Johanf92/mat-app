@@ -57,7 +57,8 @@ export default function Compare() {
    router.setParams({right:p.code});
  }
  const sameType=left&&right&&productProfile(left)?.kind===productProfile(right)?.kind&&productProfile(left)!==null;
- const notices=left&&right?[...comparisonDataWarnings(left,right),candidateNote(left,right)].filter((note): note is string => typeof note === 'string' && note.length>0):[];
+ const variantWarning=left&&right?candidateNote(left,right):null;
+ const notices=left&&right?comparisonDataWarnings(left,right):[];
  return <SafeAreaView style={s.safe} edges={['top','bottom','left','right']}>
   <View style={s.toolbar}><Pressable accessibilityRole="button" onPress={()=>router.canGoBack()?router.back():router.replace('/')} style={s.backButton}><Text style={s.back}>← Tilbake</Text></Pressable></View>
   <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.page}>
@@ -94,13 +95,14 @@ export default function Compare() {
       <Text style={s.note}>Opplysningene hentes på nytt fra produktdatabasen. Forslagslisten kan vise eldre verdier.</Text>
       <Pressable accessibilityRole="button" style={s.change} onPress={()=>{setRight(null);router.setParams({right:''});}}><Text style={s.changeText}>Endre produkt B →</Text></Pressable>
       {!sameType&&<Text style={s.warning}>Disse varene er ikke bekreftet som samme produkttype. Sammenligningen kan derfor være mindre relevant.</Text>}
-      {!!sameType&&<Text style={s.note}>Begge varene ser ut til å ha samme bruksområde ut fra registrerte opplysninger. Kontroller emballasjen.</Text>}
+      {!!sameType&&<Text style={s.note}>Varene er registrert som samme hovedtype. Oppskrift og variant kan likevel være forskjellige.</Text>}
+      {!!variantWarning&&<Text style={s.warning}>{variantWarning}</Text>}
       <Text style={s.section}>Hva vil du se nærmere på?</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.options}>
+      <View style={s.options}>
         {COMPARE_OPTIONS.map(o=><Pressable key={o.key} accessibilityRole="button" accessibilityState={{selected:focus===o.key}} style={[s.option,focus===o.key&&s.optionSelected]} onPress={()=>setFocus(o.key)}>
          <Text style={[s.optionText,focus===o.key&&s.optionTextSelected]}>{o.label}</Text>
         </Pressable>)}
-      </ScrollView>
+      </View>
       <View style={s.insight}><Text style={s.insightTitle}>Dette viser dataene</Text><Text style={s.body}>{comparisonInsight(left,right,focus)}</Text></View>
       {notices.length>0&&<View style={s.qualityCard}><Text style={s.qualityHeading}>Verdt å kontrollere</Text>{notices.map((note,i)=><Text key={i} style={s.warning}>{note}</Text>)}</View>}
       <Text style={s.section}>Næringsinnhold</Text>
@@ -137,7 +139,7 @@ const s=StyleSheet.create({
  productGrid:{flexDirection:'row',gap:12},productCard:{flex:1,backgroundColor:'white',borderColor:colors.line,borderWidth:1,borderRadius:16,padding:12,gap:8,minWidth:0},
  productImage:{width:'100%',height:95,borderRadius:10,backgroundColor:'#EDF2ED'},columnCaption:{fontSize:11,letterSpacing:0.6,color:colors.muted,fontWeight:'800'},
  productName:{fontSize:16,fontWeight:'800',color:colors.ink,minHeight:35},change:{minHeight:44,justifyContent:'center',alignSelf:'flex-start'},
- changeText:{color:colors.green,fontSize:14,fontWeight:'700'},options:{gap:9,paddingRight:16},option:{borderColor:colors.line,borderWidth:1,borderRadius:20,paddingHorizontal:12,paddingVertical:10,backgroundColor:'white'},
+ changeText:{color:colors.green,fontSize:14,fontWeight:'700'},options:{flexDirection:'row',flexWrap:'wrap',gap:9},option:{flexBasis:'46%',flexGrow:1,minHeight:44,justifyContent:'center',alignItems:'center',borderColor:colors.line,borderWidth:1,borderRadius:20,paddingHorizontal:10,paddingVertical:10,backgroundColor:'white'},
  optionSelected:{borderColor:colors.green,backgroundColor:'#E2F0E5'},optionText:{fontSize:13,fontWeight:'600',color:colors.muted},optionTextSelected:{color:colors.green},
  insight:{backgroundColor:'#E5F1E7',borderRadius:16,padding:17,gap:9},insightTitle:{fontSize:16,fontWeight:'800',color:colors.ink},
  qualityCard:{backgroundColor:'#FFF3E5',borderRadius:14,padding:15,gap:8},qualityHeading:{fontSize:15,fontWeight:'800',color:'#80551C'},
