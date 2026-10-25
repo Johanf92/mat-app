@@ -33,6 +33,11 @@ export function productDataStatus(p:FoodProduct):ProductDataStatus {
    issues.push('Energien står som 0 kcal selv om ett eller flere makronæringsstoffer er registrert. Kontroller emballasjen.');
  if(p.energyKJConflict)
    issues.push('Oppgitt energi i kcal og kJ stemmer ikke godt overens. Vi viser kcal-verdien fra kilden uten å rette den automatisk.');
+ for(const [key,label] of Object.entries(NAMES) as [keyof typeof NAMES,string][]){
+   const amount=p[key];
+   if(amount!==null&&amount!==undefined&&amount>100.1)
+     issues.push('Registrert '+label+' overstiger 100 g per 100 g/100 ml. Kontroller enhet og emballasje.');
+ }
  const notes:string[]=[...issues];
  if(!p.ingredients?.trim())notes.push('Ingredienslisten mangler i dataene vi har.');
  if(p.nova===null||p.nova===undefined)notes.push('NOVA-gruppe er ikke oppgitt.');
