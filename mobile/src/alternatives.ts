@@ -1,4 +1,4 @@
-import { type FoodProduct, searchByCategory, searchProducts } from './openFoodFacts';
+import { type FoodProduct, searchProducts } from './openFoodFacts';
 import { type Market } from './catalog';
 
 /** A category describes a use case, never a health ranking. */
@@ -105,26 +105,15 @@ export function relevantAlternatives(source: FoodProduct, options: FoodProduct[]
   }
   return found.sort((a, b) => quality(b) - quality(a) || a.name.localeCompare(b.name, 'nb')).slice(0, 6);
 }
-/** Maximum two requests per click, cached by the OFF client. Never silently widen the selected market. */
+/**
+ * Search-a-licious currently indexes text searches more reliably than exact
+ * category facets for Norwegian products (verified Oct 2026). One request per
+ * click also leaves room within OFF's 10 searches/minute/IP limit.
+ * Results are independently checked for market, use case and sufficient data.
+ */
 export async function findAlternatives(source: FoodProduct, market: Market, signal?: AbortSignal): Promise<FoodProduct[]> {
   const profile = productProfile(source);
   if (!profile) return [];
-  let viaCategory: FoodProduct[] = [];
-  try {
-    viaCategory = await searchByCategory(profile.category, market, signal);
-  } catch (error) {
-    if (signal?.aborted) throw error;
-    // An unavailable category query must not block the independent text search.
-  }
-  const candidates = relevantAlternatives(source, viaCategory, market);
-  if (candidates.length >= 4) return candidates;
-  // Search-a-licious also supports full-text search. Filter results again by
-  // exact use-case and country; never equate search relevance with health.
-  try {
-    const viaName = await searchProducts(profile.fallback, market, signal);
-    return relevantAlternatives(source, [...viaCategory, ...viaName], market);
-  } catch (error) {
-    if (candidates.length) return candidates; // Useful partial results already available.
-    throw error; // Both paths failed or no usable results: be transparent.
-  }
+  const candidates = await searchProducts(profile.fallback, market, signal);
+  return relevantAlternatives(source, candidates, market);
 }
