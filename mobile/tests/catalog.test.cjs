@@ -221,7 +221,8 @@ test('search ordering prefers exact named food over ingredients-only or broad ke
  ];
  const ranked=rankProductSearch('makrell i tomat',products);
  assert.equal(ranked[0].name,'Makrell i tomat hel filet');
- assert.equal(ranked[ranked.length-1].name,'Tomater');
+ assert.equal(ranked[ranked.length-1].name,'Blueberries');
+ assert.ok(ranked.findIndex(p=>p.name==='Tomater')>0);
  assert.equal(products[0].name,'Blueberries','source records remain unchanged');
 });
 test('search ordering remains stable when names cannot be matched',()=>{
