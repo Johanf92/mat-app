@@ -210,7 +210,14 @@ export async function searchProducts(query: string, market: Market = DEFAULT_MAR
 export async function getProduct(barcode: string, signal?: AbortSignal): Promise<FoodProduct | null> {
   if (!/^\d{8,14}$/.test(barcode)) return null;
   const data = record(await getJson(buildProductUrl(barcode), 'product', signal));
-  return data.status === 1 ? normalize({ ...record(data.product), code: record(data.product).code ?? barcode }) : null;
+  if (data.status !== 1) return null;
+  const rawProduct=record(data.product);
+  // The detail endpoint is authoritative only for the requested barcode.
+  // Never show a different product because an upstream response is malformed.
+  const returnedCode=rawProduct.code;
+  if (returnedCode !== undefined && returnedCode !== null &&
+      String(returnedCode).trim() !== barcode) return null;
+  return normalize({ ...rawProduct, code: barcode });
 }
 
 export function buildCategoryUrl(category: string, market: Market = DEFAULT_MARKET): string {
