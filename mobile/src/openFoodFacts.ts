@@ -187,8 +187,8 @@ export function searchResults(data: unknown, market: Market): FoodProduct[] {
  * Never infer product identity from ingredients and never change source values.
  */
 export function rankProductSearch(query:string, products:FoodProduct[]):FoodProduct[] {
- const fold=(value:string)=>value.toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'').replace(/ø/g,'o').replace(/æ/g,'ae').replace(/[^a-z0-9]+/g,' ').trim();
- const terms=fold(query).split(/\\s+/).filter(t=>t.length>1);
+ const fold=(value:string)=>value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/ø/g,'o').replace(/æ/g,'ae').replace(/[^a-z0-9]+/g,' ').trim();
+ const terms=fold(query).split(/\s+/).filter(t=>t.length>1);
  if(!terms.length)return products;
  const score=(p:FoodProduct):number=>{
    const name=fold(p.name), brand=fold(p.brand);
