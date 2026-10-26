@@ -168,6 +168,7 @@ export default function Compare() {
         <Text style={s.qualityHeading}>Verdt å kontrollere</Text>
         {notices.map((note,i)=><Text key={i} style={s.warning}>{note}</Text>)}
       </View>}
+      <Text style={s.note}>Nutri-Score (A–E) beskriver næringsprofil. NOVA (1–4) beskriver bearbeiding. Dette er ikke en samlet helsekarakter.</Text>
       <Text accessibilityRole="header" style={s.section}>Mer informasjon</Text>
 
       <View style={s.disclosures}>
