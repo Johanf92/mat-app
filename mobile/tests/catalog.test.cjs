@@ -210,3 +210,23 @@ test('duplicate selection obeys selected country even if another hit has richer 
  assert.equal(selected.length,1);
  assert.equal(selected[0].name,'Norway version');
 });
+
+test('search ordering prefers exact named food over ingredients-only or broad keyword matches',()=>{
+ const {rankProductSearch}=require(path.join(folder,'openFoodFacts.js'));
+ const products=[
+  {name:'Blueberries',brand:'Tomat og makrell ingredienser'},
+  {name:'Tomater',brand:'Grønnsaker'},
+  {name:'Makrell i tomat hel filet',brand:'Stabburet'},
+  {name:'Makrellfilet i tomatsaus',brand:'Sjømat'},
+ ];
+ const ranked=rankProductSearch('makrell i tomat',products);
+ assert.equal(ranked[0].name,'Makrell i tomat hel filet');
+ assert.equal(ranked[ranked.length-1].name,'Blueberries');
+ assert.ok(ranked.findIndex(p=>p.name==='Tomater')>0);
+ assert.equal(products[0].name,'Blueberries','source records remain unchanged');
+});
+test('search ordering remains stable when names cannot be matched',()=>{
+ const {rankProductSearch}=require(path.join(folder,'openFoodFacts.js'));
+ const x=[{name:'Eple',brand:'A'},{name:'Pære',brand:'B'}];
+ assert.deepEqual(rankProductSearch('makrell i tomat',x),x);
+});

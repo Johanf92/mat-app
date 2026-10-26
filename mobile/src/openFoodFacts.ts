@@ -181,9 +181,31 @@ export function searchResults(data: unknown, market: Market): FoodProduct[] {
  }
  return [...deduplicated.values()];
 }
+/**
+ * Reorder search-index hits by what the shopper typed. Search-a-licious can
+ * return ingredient/category matches (e.g. tomatoes for "makrell i tomat").
+ * Never infer product identity from ingredients and never change source values.
+ */
+export function rankProductSearch(query:string, products:FoodProduct[]):FoodProduct[] {
+ const fold=(value:string)=>value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/ø/g,'o').replace(/æ/g,'ae').replace(/[^a-z0-9]+/g,' ').trim();
+ const terms=fold(query).split(/\s+/).filter(t=>t.length>1);
+ if(!terms.length)return products;
+ const score=(p:FoodProduct):number=>{
+   const name=fold(p.name), brand=fold(p.brand);
+   const words=name.split(' ');
+   const matched=terms.filter(t=>words.some(word=>word===t || (t.length>=4&&word.startsWith(t)))).length;
+   const brandMatched=terms.filter(t=>brand.split(' ').includes(t)).length;
+   if(matched===0)return brandMatched*2;
+   return matched*30 + (matched===terms.length?120:0)
+     +(name.includes(terms.join(' '))?60:0)
+     +(name.startsWith(terms[0])?15:0) + brandMatched*2;
+ };
+ return products.map((p,i)=>({p,i,weight:score(p)}))
+   .sort((a,b)=>b.weight-a.weight||a.i-b.i).map(x=>x.p);
+}
 export async function searchProducts(query: string, market: Market = DEFAULT_MARKET, signal?: AbortSignal): Promise<FoodProduct[]> {
  if (safeSearchText(query).length < 2) return [];
- return searchResults(await getJson(buildSearchUrl(query, market), 'search', signal), market);
+ return rankProductSearch(query, searchResults(await getJson(buildSearchUrl(query, market), 'search', signal), market));
 }
 export async function getProduct(barcode: string, signal?: AbortSignal): Promise<FoodProduct | null> {
   if (!/^\d{8,14}$/.test(barcode)) return null;
