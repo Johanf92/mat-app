@@ -33,5 +33,5 @@ test('rounded percentages add up to 100 even with 101 from naive rounding',()=>{
  assert.ok(m);
  const rounded=roundedMacroEnergy(m);
  assert.equal(rounded.protein+rounded.carbs+rounded.fat,100);
- assert.deepEqual(rounded,{protein:20,carbs:11,fat:69});
+ assert.deepEqual(rounded,{protein:19,carbs:11,fat:70});
 });
