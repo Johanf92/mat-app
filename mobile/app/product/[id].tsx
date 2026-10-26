@@ -15,7 +15,38 @@ import { productDataStatus } from '../../src/productDataStatus';
 import { formatAllergenTags } from '../../src/allergens';
 import { nutriScoreDescription, nutriScoreLabel, NUTRI_SCORE_SOURCE, NORWEGIAN_LABEL_SOURCE } from '../../src/nutriScore';
 import { productSnapshot } from '../../src/productSnapshot';
+import { macroEnergy } from '../../src/macroEnergy';
 import { verifiedProcessingDiscovery } from '../../src/discovery';
+
+function MacroEnergyRing({protein,carbs,fat}:{protein:number|null;carbs:number|null;fat:number|null}) {
+ const energy=macroEnergy(protein,carbs,fat);
+ if(!energy)return <Text style={styles.caption}>Energifordeling kan ikke beregnes fra de registrerte makroverdiene.</Text>;
+ const parts=[
+  {label:'Protein',pct:energy.protein,color:'#4778C5'},
+  {label:'Karbohydrater',pct:energy.carbs,color:'#218F7A'},
+  {label:'Fett',pct:energy.fat,color:'#C68B3E'},
+ ];
+ // A segmented native View ring avoids an additional SVG dependency.
+ const ticks=90,radius=51,center=67;
+ return <View testID="macro-energy-ring" style={styles.energyRow}>
+  <View style={styles.energyRing} accessibilityLabel="Energifordeling mellom protein, karbohydrater og fett">
+   {Array.from({length:ticks},(_,i)=>{
+     const pct=(i+0.5)/ticks*100;
+     const color=pct<energy.protein?parts[0].color:pct<energy.protein+energy.carbs?parts[1].color:parts[2].color;
+     const theta=(i/ticks*360-90)*Math.PI/180;
+     return <View key={i} style={{position:'absolute',width:4,height:13,borderRadius:2,backgroundColor:color,
+       left:center+radius*Math.cos(theta)-2,top:center+radius*Math.sin(theta)-6.5,
+       transform:[{rotate:(i/ticks*360)+'deg'}]}}/>;
+   })}
+   <View style={styles.energyCenter}><Text style={styles.energyCenterMain}>E%</Text><Text style={styles.energyCenterSmall}>av makroenergi</Text></View>
+  </View>
+  <View style={styles.energyLegend}>{parts.map(part=><View key={part.label} style={styles.energyLegendRow}>
+    <View style={[styles.energyDot,{backgroundColor:part.color}]}/>
+    <Text style={styles.energyLegendLabel}>{part.label}</Text>
+    <Text style={styles.energyLegendPct}>{Math.round(part.pct)} %</Text>
+  </View>)}</View>
+ </View>;
+}
 
 type Topic = 'nova' | 'nutriscore' | 'ingredients' | 'nutrition' | 'additives' | null;
 function Accordion({ title, children }: PropsWithChildren<{ title: string }>) {
@@ -123,6 +154,9 @@ export default function ProductScreen() {
         <View style={styles.sectionHeader}><Text style={styles.section}>Makroer</Text><Pressable accessibilityRole="button" accessibilityLabel="Forklaring av næringsinnhold" onPress={() => setTopic('nutrition')} style={styles.infoButton}><Text style={styles.info}>Hva betyr tallene? ⓘ</Text></Pressable></View>
         <Text style={styles.caption}>Per 100 g / 100 ml, slik datakilden oppgir verdiene.</Text>
         <View style={styles.macros}>{([['Protein', p.protein], ['Fett', p.fat], ['Karbohydrat', p.carbs]] as const).map(([label, value]) => <View key={label} style={styles.macro}><Text style={styles.caption}>{label}</Text><Text style={styles.macroValue}>{value === null ? '—' : amount(value)}</Text></View>)}</View>
+        <Text style={styles.energyHeading}>Energifordeling (E%)</Text>
+        <MacroEnergyRing protein={p.protein} carbs={p.carbs} fat={p.fat}/>
+        <Text style={styles.caption}>Andel av beregnet energi fra protein, karbohydrater og fett. Fiber og andre energikilder inngår ikke.</Text>
         {[p.protein, p.fat, p.carbs].some(x => x === null) && <Text style={styles.caption}>— betyr at opplysningen mangler, ikke at mengden er null.</Text>}
         <View testID="product-snapshot" style={styles.snapshot}>
           <Text style={styles.snapshotHeading}>Kort fortalt</Text>
@@ -295,6 +329,16 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }, section: { fontSize: 18, fontWeight: '800', color: colors.ink },
   infoButton: { minHeight: 44, justifyContent: 'center', paddingVertical: 8 }, info: { fontSize: 13, fontWeight: '700', color: colors.green },
   macros: { flexDirection: 'row', gap: 9, flexWrap: 'wrap' }, macro: { flex: 1, minWidth: 85, padding: 12, gap: 7, backgroundColor: 'white', borderWidth: 1, borderColor: colors.line, borderRadius: 13 },
+  energyHeading:{fontSize:15,fontWeight:'700',color:colors.ink},
+  energyRow:{flexDirection:'row',alignItems:'center',gap:14,flexWrap:'wrap'},
+  energyRing:{width:134,height:134,justifyContent:'center',alignItems:'center'},
+  energyCenter:{alignItems:'center',gap:1},energyCenterMain:{fontSize:20,fontWeight:'800',color:colors.ink},
+  energyCenterSmall:{fontSize:9,color:colors.muted},
+  energyLegend:{flex:1,minWidth:150,gap:12},
+  energyLegendRow:{flexDirection:'row',alignItems:'center',gap:7},
+  energyDot:{width:9,height:9,borderRadius:5},
+  energyLegendLabel:{flex:1,fontSize:12,color:colors.ink},
+  energyLegendPct:{fontSize:14,fontWeight:'700',color:colors.ink},
   macroValue: { fontSize: 18, fontWeight: '700', color: colors.ink }, accordions: { marginTop: 2 }, accordion: { borderTopWidth: 1, borderTopColor: colors.line },
   accordionHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 17 }, accordionTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.ink },
   arrow: { fontSize: 24, color: colors.green }, details: { paddingBottom: 17, gap: 12 }, nutrientRow: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 },
