@@ -26,3 +26,12 @@ test('macro energy fractions sum to 100%',()=>{
  const m=macroEnergy(3.5,12.7,2.1);
  assert.ok(Math.abs(m.protein+m.carbs+m.fat-100)<1e-8);
 });
+
+test('rounded percentages add up to 100 even with 101 from naive rounding',()=>{
+ const {roundedMacroEnergy}=loaded.exports;
+ const m=macroEnergy(12,6.5,19);
+ assert.ok(m);
+ const rounded=roundedMacroEnergy(m);
+ assert.equal(rounded.protein+rounded.carbs+rounded.fat,100);
+ assert.deepEqual(rounded,{protein:20,carbs:11,fat:69});
+});
