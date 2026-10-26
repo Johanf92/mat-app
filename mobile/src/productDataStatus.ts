@@ -39,6 +39,13 @@ export function productDataStatus(p:FoodProduct):ProductDataStatus {
    if(amount!==null&&amount!==undefined&&amount>100.1)
      issues.push('Registrert '+label+' overstiger 100 g per 100 g/100 ml. Kontroller enhet og emballasje.');
  }
+ // A literal zero is data, not a missing value. For natural yoghurt, a
+ // zero sugar value alongside registered carbohydrates merits a neutral
+ // packaging check, never an automatic correction.
+ const dairyName=(p.name||'').toLowerCase();
+ const plausibleYogurt=/yogh?urt|yogur|skyr/.test(dairyName);
+ if(plausibleYogurt&&p.sugar===0&&p.carbs!==null&&p.carbs>=1)
+   issues.push('Sukkerarter er registrert som 0 g, selv om yoghurtproduktet har karbohydrater. Verdien kan være riktig, men bør kontrolleres mot emballasjen.');
  const notes:string[]=[...issues];
  if(!p.ingredients?.trim())notes.push('Ingredienslisten mangler i dataene vi har.');
  if(p.nova===null||p.nova===undefined)notes.push('NOVA-gruppe er ikke oppgitt.');

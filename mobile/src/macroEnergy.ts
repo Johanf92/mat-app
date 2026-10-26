@@ -10,3 +10,13 @@ export function macroEnergy(protein:number|null,carbs:number|null,fat:number|nul
  if(total<=0)return null;
  return {protein:energies[0]/total*100,carbs:energies[1]/total*100,fat:energies[2]/total*100,total};
 }
+
+/** Largest remainder rounding: displayed whole E% always totals exactly 100. */
+export function roundedMacroEnergy(value:MacroEnergy):{protein:number;carbs:number;fat:number} {
+ const raw=[value.protein,value.carbs,value.fat];
+ const rounded=raw.map(x=>Math.floor(x));
+ const remaining=100-rounded.reduce((a,b)=>a+b,0);
+ const order=raw.map((x,i)=>({i,part:x-rounded[i]})).sort((a,b)=>b.part-a.part||a.i-b.i);
+ for(let n=0;n<remaining;n++)rounded[order[n%3].i]++;
+ return {protein:rounded[0],carbs:rounded[1],fat:rounded[2]};
+}
