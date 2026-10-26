@@ -122,6 +122,23 @@ test('request behavior: country guard, cache separation, global barcode, HTTP er
   } finally { global.fetch = originalFetch; }
 });
 
+test('barcode details never accept another product identity', async () => {
+ const originalFetch=global.fetch;
+ try {
+  global.fetch=async()=>({ok:true,status:200,json:async()=>({
+    status:1,product:{code:'1234567890123',product_name:'Unrelated product'}
+  })});
+  assert.equal(await getProduct('1111111111111'),null,
+   'a wrong barcode in an upstream detail response must not be displayed');
+  global.fetch=async()=>({ok:true,status:200,json:async()=>({
+    status:1,product:{product_name:'Valid record without code',ingredients_text:'Melk'}
+  })});
+  const matching=await getProduct('2222222222222');
+  assert.equal(matching.code,'2222222222222');
+  assert.equal(matching.ingredients,'Melk');
+ } finally {global.fetch=originalFetch;}
+});
+
 test('Search-a-licious hits are normalised and strictly filtered by country', () => {
  const product = { ...base, categories_tags: ['en:oat-drinks'], brands: 'Test brand',
    nutriments: { proteins_100g: 3.4, sugars_100g: 0 } };
