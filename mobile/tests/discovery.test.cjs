@@ -10,7 +10,7 @@ let sameKind=true;
 const mockedModule={exports:{}};
 vm.runInNewContext(js,{module:mockedModule,exports:mockedModule.exports,require(id){
  if(id==='./alternatives')return {productProfile:()=>({kind:'oats-plain'}),matchesProfile:()=>sameKind};
- if(id==='./productDataStatus')return {productDataStatus:p=>({issues:p.invalid?['conflict']:[]})};
+ if(id==='./productDataStatus')return {productDataStatus:p=>({issues:p.invalid?['conflict']:[],cautions:p.suspicious?['verify']:[]})};
  throw Error(id);
 }});
 const {verifiedProcessingDiscovery}=mockedModule.exports;
@@ -28,4 +28,8 @@ test('inconsistent records, different type or dietary label cannot be promoted',
  assert.equal(verifiedProcessingDiscovery({...a,name:'Glutenfri havregryn'},b),false);
  sameKind=false;
  assert.equal(verifiedProcessingDiscovery(a,b),false);
+});
+
+test('suspicious source record is not automatically promoted as a better variant',()=>{
+ assert.equal(verifiedProcessingDiscovery(a,{...b,suspicious:true}),false);
 });

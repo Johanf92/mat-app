@@ -7,6 +7,10 @@ export type ProductDataStatus={
   notes:string[];
   /** Observed internal contradictions, not a health or reliability score. */
   issues:string[];
+  /** Suspicious source declarations needing human verification, not proven errors. */
+  cautions:string[];
+  /** Missing fields, kept distinct from zero and from contradictions. */
+  missing:string[];
   /** Compact neutral caveat for the product overview, only when useful. */
   summaryNotice:string|null;
 };
@@ -26,6 +30,7 @@ export function productDataStatus(p:FoodProduct):ProductDataStatus {
  const observedNutrients=KEYS.filter(key=>p[key]!==null&&p[key]!==undefined).length;
  const missingCore=CORE_KEYS.filter(key=>p[key]===null||p[key]===undefined);
  const issues:string[]=[];
+ const cautions:string[]=[];
  if(p.sugar!==null&&p.sugar!==undefined&&p.carbs!==null&&p.carbs!==undefined
    &&p.sugar>p.carbs+0.1)
    issues.push('Sukkerarter er registrert høyere enn karbohydrater. Kontroller emballasjen.');
@@ -45,8 +50,12 @@ export function productDataStatus(p:FoodProduct):ProductDataStatus {
  const dairyName=(p.name||'').toLowerCase();
  const plausibleYogurt=/yogh?urt|yogur|skyr/.test(dairyName);
  if(plausibleYogurt&&p.sugar===0&&p.carbs!==null&&p.carbs>=1)
-   issues.push('Sukkerarter er registrert som 0 g, selv om yoghurtproduktet har karbohydrater. Verdien kan være riktig, men bør kontrolleres mot emballasjen.');
- const notes:string[]=[...issues];
+   cautions.push('Sukkerarter er registrert som 0 g, selv om yoghurtproduktet har karbohydrater. Verdien kan være riktig, men bør kontrolleres mot emballasjen.');
+ const missing:string[]=[];
+ if(!p.ingredients?.trim())missing.push('Ingrediensliste');
+ if(p.nova===null||p.nova===undefined)missing.push('NOVA');
+ for(const key of missingCore)missing.push(NAMES[key]);
+ const notes:string[]=[...issues,...cautions];
  if(!p.ingredients?.trim())notes.push('Ingredienslisten mangler i dataene vi har.');
  if(p.nova===null||p.nova===undefined)notes.push('NOVA-gruppe er ikke oppgitt.');
  if(p.nutriScore===null)notes.push('Nutri-Score er ikke oppgitt. Vi beregner ikke en karakter fra næringsdata.');
@@ -62,8 +71,10 @@ export function productDataStatus(p:FoodProduct):ProductDataStatus {
    +(p.nova===null||p.nova===undefined?'NOVA mangler':'NOVA '+p.nova+' registrert')+'.';
  const summaryNotice=issues.length
    ?'Noen registrerte næringstall virker motstridende. Se «Kilde og datakvalitet».'
+   :cautions.length
+    ?'Noen registrerte verdier bør kontrolleres. Se «Kilde og datakvalitet».'
    :!p.ingredients?.trim() || missingCore.length>=3
     ?'Viktige opplysninger mangler i datakilden. Se «Kilde og datakvalitet».'
     :null;
- return {observedNutrients,nutrientFields:KEYS.length,headline,notes,issues,summaryNotice};
+ return {observedNutrients,nutrientFields:KEYS.length,headline,notes,issues,cautions,missing,summaryNotice};
 }
