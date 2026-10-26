@@ -192,12 +192,13 @@ export function rankProductSearch(query:string, products:FoodProduct[]):FoodProd
  if(!terms.length)return products;
  const score=(p:FoodProduct):number=>{
    const name=fold(p.name), brand=fold(p.brand);
-   const joined=name+' '+brand;
-   const count=terms.filter(t=>joined.split(' ').some(word=>word===t || (t.length>=4&&word.startsWith(t)))).length;
-   if(count===0)return 0;
-   return count*20 + (count===terms.length?100:0)
-     +(name.includes(terms.join(' '))?50:0)
-     +(name.startsWith(terms[0])?10:0);
+   const words=name.split(' ');
+   const matched=terms.filter(t=>words.some(word=>word===t || (t.length>=4&&word.startsWith(t)))).length;
+   const brandMatched=terms.filter(t=>brand.split(' ').includes(t)).length;
+   if(matched===0)return brandMatched*2;
+   return matched*30 + (matched===terms.length?120:0)
+     +(name.includes(terms.join(' '))?60:0)
+     +(name.startsWith(terms[0])?15:0) + brandMatched*2;
  };
  return products.map((p,i)=>({p,i,weight:score(p)}))
    .sort((a,b)=>b.weight-a.weight||a.i-b.i).map(x=>x.p);
