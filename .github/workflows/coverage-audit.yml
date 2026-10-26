@@ -1,0 +1,45 @@
+name: Norwegian product coverage audit
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/coverage-audit.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Audit 30 Norwegian food queries
+        run: node scripts/coverage-audit.cjs > coverage-report.json
+      - name: Summarize coverage observations
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const report=JSON.parse(fs.readFileSync('coverage-report.json','utf8'));
+          const rows=report.rows;
+          const errors=rows.filter(r=>r.error);
+          const hits=rows.filter(r=>r.hits>0);
+          console.log(JSON.stringify({
+            checked:rows.length,requestsFailed:errors.length,foundAtLeastOne: hits.length,
+            firstHitWithIngredients:hits.filter(r=>r.hasIngredients).length,
+            firstHitWithNutrition:hits.filter(r=>r.hasNutrition).length,
+            firstHitWithNova:hits.filter(r=>r.hasNova).length,
+            firstHitWithNutriScore:hits.filter(r=>r.hasNutriScore).length,
+            warning:'First hits have NOT been validated as relevant or correct products.',
+            misses: rows.filter(r=>!r.hits).map(r=>({query:r.query,error:r.error||null}))
+          },null,2));
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: norwegian-food-coverage
+          path: mobile/coverage-report.json
+          if-no-files-found: warn
