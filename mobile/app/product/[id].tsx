@@ -15,27 +15,28 @@ import { productDataStatus } from '../../src/productDataStatus';
 import { formatAllergenTags } from '../../src/allergens';
 import { nutriScoreDescription, nutriScoreLabel, NUTRI_SCORE_SOURCE, NORWEGIAN_LABEL_SOURCE } from '../../src/nutriScore';
 import { productSnapshot } from '../../src/productSnapshot';
-import { macroEnergy } from '../../src/macroEnergy';
+import { macroEnergy, roundedMacroEnergy } from '../../src/macroEnergy';
 import { verifiedProcessingDiscovery } from '../../src/discovery';
 
 function MacroEnergyRing({protein,carbs,fat}:{protein:number|null;carbs:number|null;fat:number|null}) {
  const energy=macroEnergy(protein,carbs,fat);
  if(!energy)return <Text style={styles.caption}>Energifordeling kan ikke beregnes fra de registrerte makroverdiene.</Text>;
+ const rounded=roundedMacroEnergy(energy);
  const parts=[
   {label:'Protein',pct:energy.protein,color:'#4778C5'},
   {label:'Karbohydrater',pct:energy.carbs,color:'#218F7A'},
   {label:'Fett',pct:energy.fat,color:'#C68B3E'},
  ];
  // A segmented native View ring avoids an additional SVG dependency.
- const ticks=90,radius=51,center=67;
+ const ticks=180,radius=50,center=64;
  return <View testID="macro-energy-ring" style={styles.energyRow}>
   <View style={styles.energyRing} accessibilityLabel="Energifordeling mellom protein, karbohydrater og fett">
    {Array.from({length:ticks},(_,i)=>{
      const pct=(i+0.5)/ticks*100;
      const color=pct<energy.protein?parts[0].color:pct<energy.protein+energy.carbs?parts[1].color:parts[2].color;
      const theta=(i/ticks*360-90)*Math.PI/180;
-     return <View key={i} style={{position:'absolute',width:4,height:13,borderRadius:2,backgroundColor:color,
-       left:center+radius*Math.cos(theta)-2,top:center+radius*Math.sin(theta)-6.5,
+     return <View key={i} style={{position:'absolute',width:5,height:11,backgroundColor:color,
+       left:center+radius*Math.cos(theta)-2.5,top:center+radius*Math.sin(theta)-5.5,
        transform:[{rotate:(i/ticks*360)+'deg'}]}}/>;
    })}
    <View style={styles.energyCenter}><Text style={styles.energyCenterMain}>E%</Text><Text style={styles.energyCenterSmall}>av makroenergi</Text></View>
@@ -43,7 +44,7 @@ function MacroEnergyRing({protein,carbs,fat}:{protein:number|null;carbs:number|n
   <View style={styles.energyLegend}>{parts.map(part=><View key={part.label} style={styles.energyLegendRow}>
     <View style={[styles.energyDot,{backgroundColor:part.color}]}/>
     <Text style={styles.energyLegendLabel}>{part.label}</Text>
-    <Text style={styles.energyLegendPct}>{Math.round(part.pct)} %</Text>
+    <Text style={styles.energyLegendPct}>{part.label==='Protein'?rounded.protein:part.label==='Fett'?rounded.fat:rounded.carbs} %</Text>
   </View>)}</View>
  </View>;
 }
@@ -331,7 +332,7 @@ const styles = StyleSheet.create({
   macros: { flexDirection: 'row', gap: 9, flexWrap: 'wrap' }, macro: { flex: 1, minWidth: 85, padding: 12, gap: 7, backgroundColor: 'white', borderWidth: 1, borderColor: colors.line, borderRadius: 13 },
   energyHeading:{fontSize:15,fontWeight:'700',color:colors.ink},
   energyRow:{flexDirection:'row',alignItems:'center',gap:14,flexWrap:'wrap'},
-  energyRing:{width:134,height:134,justifyContent:'center',alignItems:'center'},
+  energyRing:{width:128,height:128,justifyContent:'center',alignItems:'center'},
   energyCenter:{alignItems:'center',gap:1},energyCenterMain:{fontSize:20,fontWeight:'800',color:colors.ink},
   energyCenterSmall:{fontSize:9,color:colors.muted},
   energyLegend:{flex:1,minWidth:150,gap:12},
